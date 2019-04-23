@@ -7,7 +7,8 @@ use super::{Hook, Handle};
 
 /// Hook to search for included files in file system.
 pub struct FsHook {
-    include_dirs: Vec<PathBuf>,
+    dirs: Vec<PathBuf>,
+    cache: HashMap<PathBuf, Info>,
 }
 
 pub struct FsHandle {
@@ -15,27 +16,29 @@ pub struct FsHandle {
 }
 
 impl FsHook {
-    pub fn new(include_dirs: &[&Path]) -> io::Result<Self> {
-        let hook = FsHook {
-            include_dirs: include_dirs.iter().map(|e| e.to_path_buf()).collect(),
-        };
-        hook.check_dirs().map(|()| hook)
+    pub fn new() -> Self {
+        FsHook { dirs: Vec::new() }
     }
 
-    fn check_dirs(&self) -> io::Result<()> {
-        for dir in &self.include_dirs {
-            let meta = fs::metadata(dir)?;
-            if !meta.is_dir() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("'{}' is not a directory", dir.display()),
-                ))
-            }
-        }
+    pub fn add_dir(&mut self, dir: &Path) -> io::Result<()> {
+        Self::check_dir(dir)?;
+        self.dirs.push(dir.to_path_buf());
         Ok(())
     }
 
-    fn check_file(&self, path: &Path) -> io::Result<()> {
+    fn check_dir(dir: &Path) -> io::Result<()> {
+        let meta = fs::metadata(dir)?;
+        if !meta.is_dir() {
+            Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("'{}' is not a directory", dir.display()),
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn check_file(path: &Path) -> io::Result<()> {
         match fs::metadata(path) {
             Ok(meta) => {
                 if !meta.is_file() {
@@ -51,36 +54,37 @@ impl FsHook {
         }
     }
 
+    fn find_in_dir(self, dir: &Path, name: &Path) -> io::Result<Option<PathBuf>> {
+        let path = dir.join(name);
+        match Self::check_file(&path) {
+            Ok(()) => Ok(Some(path)),
+            Err(e) => match e.kind() {
+                io::ErrorKind::NotFound => Ok(None),
+                _ => return Err(e),
+            }
+        }
+    }
+
     fn find_file(&self, dir: Option<&Path>, name: &Path) -> io::Result<PathBuf> {
         match dir {
-            Some(dir) => {
-                let path = dir.join(name);
-                match self.check_file(&path) {
-                    Ok(()) => return Ok(path),
-                    Err(e) => match e.kind() {
-                        io::ErrorKind::NotFound => (),
-                        _ => return Err(e),
-                    }
-                }
+            Some(dir) => match Self::find_in_dir(dir, name)? {
+                Some(path) => return Ok(path),
+                None => (),
             },
             None => (),
         }
 
-        for dir in self.include_dirs.iter() {
-            let path = dir.join(name);
-            match self.check_file(&path) {
-                Ok(()) => return Ok(path),
-                Err(e) => match e.kind() {
-                    io::ErrorKind::NotFound => (),
-                    _ => return Err(e),
-                }
+        for dir in self.dirs.iter() {
+            match Self::find_in_dir(dir, name)? {
+                Some(path) => return Ok(path),
+                None => (),
             }
         }
 
         Err(io::Error::new(
             io::ErrorKind::NotFound,
             format!(
-                "File '{}' not found in any of include_dirs",
+                "File '{}' not found in any of include dirs",
                 name.display()
             ),
         ))
