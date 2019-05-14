@@ -24,7 +24,7 @@ struct Info {
 struct Collector<H: Hook> {
     hook: H,
     stack: Vec<PathBuf>,
-    cache: HashMap<PathBuf, Info>,
+    
 }
 
 impl<H: Hook> Collector<H> {

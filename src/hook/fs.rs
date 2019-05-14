@@ -1,14 +1,15 @@
+use std::collections::HashMap;
 use std::io;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::{Hook, Handle};
+use super::{Hook};
 
 
 /// Hook to search for included files in file system.
 pub struct FsHook {
     dirs: Vec<PathBuf>,
-    cache: HashMap<PathBuf, Info>,
+    cache: HashMap<PathBuf, Option<String>>,
 }
 
 pub struct FsHandle {
