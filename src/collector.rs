@@ -1,64 +1,68 @@
 use std::{
     io,
     env,
-    ops::Range,
-    collections::hash_map::{HashMap, Entry},
     path::{Path, PathBuf},
 };
 
-use crate::hook::{Hook};
+use regex::{Regex, RegexBuilder};
 
-pub struct Node {
-    name: PathBuf,
-    range: Range<usize>,
-    nodes: Vec<Node>,
+use lazy_static::lazy_static;
+
+use crate::{
+    node::{Node},
+    cache::{Cache},
+    hook::{Hook},
+};
+
+
+lazy_static!{
+    static ref INCLUDE: Regex = RegexBuilder::new(
+        "^\\s*#include\\s*([<\"])([^>\"])([>\"])\\s*$"
+    ).multi_line(true).build().unwrap();
+    static ref PRAGMA_ONCE: Regex = RegexBuilder::new(
+        "^\\s*#pragma\\s+once\\s*$"
+    ).multi_line(true).build().unwrap();
 }
 
-pub struct Data {
-    lines: Vec<String>,
-}
-
-impl Data {
-    pub fn new() -> Self {
-        Self { lines: Vec::new() }
-    }
-}
-
-struct Cache {
-    map: HashMap<PathBuf, String>,
-}
-
-impl Cache {
-    pub fn new() -> Self {
-        Self { map: HashMap::new() }
-    }
-    pub fn put(&mut self, path: &Path, text: String) -> io::Result<()> {
-        match self.map.entry(path) {
-            Entry::Occupied(_) => Err(io::Error::new(
-                io::ErrorKind::AlreadyExists,
-                path.to_string_lossy(),
-            )),
-            Entry::Vacant(v) => {
-                v.insert(text);
-                Ok(())
-            },
-        }
-    }
-    pub fn get(&mut self, path: &Path) -> Option<&String> {
-        self.map.get(path)
-    }
+enum ParseLine<'a> {
+    Text(&'a str),
+    Node(Node),
+    Break,
+    Err(io::Error),
 }
 
 pub struct Collector {
     hook: Box<dyn Hook>,
     cache: Cache,
+    stack: Vec<PathBuf>,
 }
 
 impl Collector {
     pub fn new(hook: Box<dyn Hook>) -> Self {
-        Collector { hook, cache: Cache::new() }
+        Collector {
+            hook,
+            cache: Cache::new(),
+            stack: Vec::new(),
+        }
     }
-    pub fn collect(&mut self, data: &mut Data, path: &Path, dir: Option<&Path>) -> io::Result<Node> {
+
+    fn read(&mut self, path: &Path) -> io::Result<String> {
+        match self.cache.get_mut(path) {
+            Some(entry) => {
+                entry.occured += 1;
+                Ok(entry.text.clone())
+            },
+            None => {
+                self.hook.read(path)
+                .and_then(|text| {
+                    self.cache.put(path, text.clone())
+                    .map(|()| text)
+                })
+            },
+        }
+    }
+
+    pub fn collect(&mut self, path: &Path, dir: Option<&Path>) -> io::Result<Option<Node>> {
         if path.is_absolute() {
             Ok(path)
         } else {
@@ -66,16 +70,96 @@ impl Collector {
                 "absolute path expected, got '{}'", path.to_string_lossy()
             )))
         }
-        .and_then(|path| self.hook.find(path, dir))
-        .and_then(|full_path| self.parse(data, &full_path))
+        .and_then(|rpath| self.hook.find(rpath, dir))
+        .and_then(|path| {
+            if self.stack.iter().map(|p| (*p == path) as u32).fold(0, |a, x| a + x) >= 2 {
+                Err(io::Error::new(io::ErrorKind::InvalidInput, format!(
+                    "recursion found in file: {}", path.to_string_lossy()
+                )))
+            } else {
+                self.stack.push(path.clone());
+                Ok(path)
+            }
+        })
+        .and_then(|path| self.read(&path).map(|t| (t, path)))
+        .and_then(|(text, path)| self.parse(&path, text))
+        .and_then(|x| {
+            assert_eq!(self.stack.pop().unwrap(), path);
+            Ok(x)
+        })
     }
-    pub fn parse(&mut self, data: &mut Data, path: &Path) -> io::Result<Node> {
-        self.hook.read()
-        .and_then(|text| self.cache
+
+    fn parse_line<'a>(
+        &mut self, path: &Path, line: &'a str, node: &Node
+    ) -> ParseLine<'a> {
+        match INCLUDE.captures(line) {
+            Some(cap) => Some({
+                match {
+                    let (lb, inc_path, rb) = (&cap[0], &cap[1], &cap[2]);
+                    if lb == "<" && rb == ">" {
+                        Ok(None)
+                    } else if lb == "\"" && rb == "\"" {
+                        Ok(Some(path.parent().unwrap().to_path_buf()))
+                    } else {
+                        Err(io::Error::new(io::ErrorKind::InvalidData, format!(
+                            "error parsing file '{}' line {}: bad #include syntax",
+                            path.to_string_lossy(), node.data.lines_count(),
+                        )))
+                    }
+                    .map(|dir| (Path::new(inc_path).to_path_buf(), dir))
+                }
+                .and_then(|(path, dir)| {
+                    let dir_ref = match dir {
+                        Some(ref path_buf) => Some(path_buf.as_path()),
+                        None => None,
+                    };
+                    self.collect(&path, dir_ref)
+                }) {
+                    Ok(node_opt) => match node_opt {
+                        Some(node) => ParseLine::Node(node),
+                        None => ParseLine::Text(""),
+                    },
+                    Err(err) => ParseLine::Err(err),
+                }
+            }),
+            None => None,
+        }
+        .or_else(|| {
+            if PRAGMA_ONCE.is_match(line) {
+                Some(if self.cache.get(path).unwrap().occured > 1 {
+                    ParseLine::Break
+                } else {
+                    ParseLine::Text("")
+                })
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| {
+            ParseLine::Text(line)
+        })
+    }
+
+    fn parse(&mut self, path: &Path, text: String) -> io::Result<Option<Node>> {
+        let mut node = Node::new(path);
+        for line in text.lines() {
+            match self.parse_line(path, line, &node) {
+                ParseLine::Text(text) => {
+                    node.data.add_line(text);
+                },
+                ParseLine::Node(child_node) => {
+                    node.add_child(child_node);
+                    node.data.add_line("");
+                },
+                ParseLine::Break => return Ok(None),
+                ParseLine::Err(e) => return Err(e),
+            }
+        }
+        Ok(Some(node))
     }
 }
 
-pub fn collect(main: &Path, hook: Box<dyn Hook>) -> io::Result<(Node, Data)> {
+pub fn collect(main: &Path, hook: Box<dyn Hook>) -> io::Result<Node> {
     if main.is_absolute() {
         Ok(main.to_path_buf())
     } else {
@@ -84,8 +168,7 @@ pub fn collect(main: &Path, hook: Box<dyn Hook>) -> io::Result<(Node, Data)> {
     }
     .and_then(|p| p.canonicalize())
     .and_then(|p| {
-        let data = Data::new();
-        Collector::new(hook).collect(&mut data, &p, None)
-        .map(|tree| (tree, data))
+        Collector::new(hook).collect(&p, None)
+        .map(|root| root.unwrap() )
     })
 }
