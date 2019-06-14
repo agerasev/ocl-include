@@ -1,5 +1,4 @@
 mod node;
-mod cache;
 
 pub mod hook;
 

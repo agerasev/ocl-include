@@ -4,7 +4,7 @@ use std::{
 
 
 pub struct Node {
-    name: PathBuf,
+    pub name: PathBuf,
     pub data: Data,
     inner: Vec<Node>,
 }

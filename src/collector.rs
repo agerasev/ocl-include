@@ -2,6 +2,7 @@ use std::{
     io,
     env,
     path::{Path, PathBuf},
+    collections::hash_map::{HashMap, Entry},
 };
 
 use regex::{Regex, RegexBuilder};
@@ -10,7 +11,6 @@ use lazy_static::lazy_static;
 
 use crate::{
     node::{Node},
-    cache::{Cache},
     hook::{Hook},
 };
 
@@ -31,38 +31,41 @@ enum ParseLine<'a> {
     Err(io::Error),
 }
 
-pub struct Collector {
-    hook: Box<dyn Hook>,
-    cache: Cache,
+struct CacheEntry {
+    occured: usize,
+}
+impl CacheEntry {
+    fn new() -> Self {
+        Self { occured: 1 }
+    }
+}
+
+pub struct Collector<'a> {
+    hook: &'a dyn Hook,
+    cache: HashMap<PathBuf, CacheEntry>,
     stack: Vec<PathBuf>,
 }
 
-impl Collector {
-    pub fn new(hook: Box<dyn Hook>) -> Self {
+impl<'a> Collector<'a> {
+    fn new(hook: &'a dyn Hook) -> Self {
         Collector {
             hook,
-            cache: Cache::new(),
+            cache: HashMap::new(),
             stack: Vec::new(),
         }
     }
 
-    fn read(&mut self, path: &Path) -> io::Result<String> {
-        match self.cache.get_mut(path) {
-            Some(entry) => {
-                entry.occured += 1;
-                Ok(entry.text.clone())
-            },
-            None => {
-                self.hook.read(path)
-                .and_then(|text| {
-                    self.cache.put(path, text.clone())
-                    .map(|()| text)
-                })
-            },
-        }
+    fn read(&mut self, path: &Path, dir: Option<&Path>) -> io::Result<(PathBuf, String)> {
+        self.hook.read(path, dir).and_then(|(path, text)| {
+            match self.cache.entry(path.to_path_buf()) {
+                Entry::Occupied(mut v) => { v.get_mut().occured += 1; },
+                Entry::Vacant(v) => { v.insert(CacheEntry::new()); },
+            }
+            Ok((path, text))
+        })
     }
 
-    pub fn collect(&mut self, path: &Path, dir: Option<&Path>) -> io::Result<Option<Node>> {
+    fn collect(&mut self, path: &Path, dir: Option<&Path>) -> io::Result<Option<Node>> {
         if path.is_absolute() {
             Ok(path)
         } else {
@@ -70,28 +73,27 @@ impl Collector {
                 "absolute path expected, got '{}'", path.to_string_lossy()
             )))
         }
-        .and_then(|rpath| self.hook.find(rpath, dir))
-        .and_then(|path| {
+        .and_then(|path| self.read(path, dir))
+        .and_then(|(path, text)| {
             if self.stack.iter().map(|p| (*p == path) as u32).fold(0, |a, x| a + x) >= 2 {
                 Err(io::Error::new(io::ErrorKind::InvalidInput, format!(
-                    "recursion found in file: {}", path.to_string_lossy()
+                    "recursion found in file: '{}'", path.to_string_lossy()
                 )))
             } else {
                 self.stack.push(path.clone());
-                Ok(path)
+                Ok((path, text))
             }
         })
-        .and_then(|path| self.read(&path).map(|t| (t, path)))
-        .and_then(|(text, path)| self.parse(&path, text))
+        .and_then(|(path, text)| self.parse(&path, text))
         .and_then(|x| {
             assert_eq!(self.stack.pop().unwrap(), path);
             Ok(x)
         })
     }
 
-    fn parse_line<'a>(
-        &mut self, path: &Path, line: &'a str, node: &Node
-    ) -> ParseLine<'a> {
+    fn parse_line<'b>(
+        &mut self, path: &Path, line: &'b str, node: &Node
+    ) -> ParseLine<'b> {
         match INCLUDE.captures(line) {
             Some(cap) => Some({
                 match {
@@ -159,7 +161,7 @@ impl Collector {
     }
 }
 
-pub fn collect(main: &Path, hook: Box<dyn Hook>) -> io::Result<Node> {
+pub fn collect(main: &Path, hook: &dyn Hook) -> io::Result<Node> {
     if main.is_absolute() {
         Ok(main.to_path_buf())
     } else {
