@@ -17,10 +17,10 @@ use crate::{
 
 lazy_static!{
     static ref INCLUDE: Regex = RegexBuilder::new(
-        "^\\s*#include\\s*([<\"])([^>\"])([>\"])\\s*$"
+        r#"^\s*#include\s*(.)(.*)(.)\s*$"#
     ).multi_line(true).build().unwrap();
     static ref PRAGMA_ONCE: Regex = RegexBuilder::new(
-        "^\\s*#pragma\\s+once\\s*$"
+        r#"^\s*#pragma\s+once\s*$"#
     ).multi_line(true).build().unwrap();
 }
 
@@ -66,14 +66,7 @@ impl<'a> Collector<'a> {
     }
 
     fn collect(&mut self, path: &Path, dir: Option<&Path>) -> io::Result<Option<Node>> {
-        if path.is_absolute() {
-            Ok(path)
-        } else {
-            Err(io::Error::new(io::ErrorKind::InvalidInput,format!(
-                "absolute path expected, got '{}'", path.to_string_lossy()
-            )))
-        }
-        .and_then(|path| self.read(path, dir))
+        self.read(path, dir)
         .and_then(|(path, text)| {
             if self.stack.iter().map(|p| (*p == path) as u32).fold(0, |a, x| a + x) >= 2 {
                 Err(io::Error::new(io::ErrorKind::InvalidInput, format!(
@@ -84,8 +77,8 @@ impl<'a> Collector<'a> {
                 Ok((path, text))
             }
         })
-        .and_then(|(path, text)| self.parse(&path, text))
-        .and_then(|x| {
+        .and_then(|(path, text)| self.parse(&path, text).map(|x| (x, path)))
+        .and_then(|(x, path)| {
             assert_eq!(self.stack.pop().unwrap(), path);
             Ok(x)
         })
@@ -97,7 +90,7 @@ impl<'a> Collector<'a> {
         match INCLUDE.captures(line) {
             Some(cap) => Some({
                 match {
-                    let (lb, inc_path, rb) = (&cap[0], &cap[1], &cap[2]);
+                    let (lb, inc_path, rb) = (&cap[1], &cap[2], &cap[3]);
                     if lb == "<" && rb == ">" {
                         Ok(None)
                     } else if lb == "\"" && rb == "\"" {
@@ -105,7 +98,7 @@ impl<'a> Collector<'a> {
                     } else {
                         Err(io::Error::new(io::ErrorKind::InvalidData, format!(
                             "error parsing file '{}' line {}: bad #include syntax",
-                            path.to_string_lossy(), node.data.lines_count(),
+                            path.to_string_lossy(), node.lines_count(),
                         )))
                     }
                     .map(|dir| (Path::new(inc_path).to_path_buf(), dir))
@@ -147,11 +140,10 @@ impl<'a> Collector<'a> {
         for line in text.lines() {
             match self.parse_line(path, line, &node) {
                 ParseLine::Text(text) => {
-                    node.data.add_line(text);
+                    node.add_line(text);
                 },
                 ParseLine::Node(child_node) => {
                     node.add_child(child_node);
-                    node.data.add_line("");
                 },
                 ParseLine::Break => return Ok(None),
                 ParseLine::Err(e) => return Err(e),
@@ -161,16 +153,8 @@ impl<'a> Collector<'a> {
     }
 }
 
-pub fn collect(main: &Path, hook: &dyn Hook) -> io::Result<Node> {
-    if main.is_absolute() {
-        Ok(main.to_path_buf())
-    } else {
-        env::current_dir()
-        .map(|cwd| cwd.join(main))
-    }
-    .and_then(|p| p.canonicalize())
-    .and_then(|p| {
-        Collector::new(hook).collect(&p, None)
-        .map(|root| root.unwrap() )
-    })
+pub fn collect(hook: &dyn Hook, main: &Path) -> io::Result<Node> {
+    let cwd = env::current_dir().ok();
+    Collector::new(hook).collect(&main, cwd.as_ref().map(|p| p.as_path()))
+    .map(|root| root.unwrap())
 }

@@ -14,22 +14,33 @@ impl MemHook {
         Self { files: HashMap::new() }
     }
 
-    pub fn add_file(&mut self, name: &Path, data: String) -> io::Result<()> {
+    pub fn add_file(mut self, name: &Path, data: String) -> io::Result<Self> {
         match self.files.insert(name.to_path_buf(), data) {
             Some(_) => Err(io::ErrorKind::AlreadyExists.into()),
-            None => Ok(()),
+            None => Ok(self),
         }
+    }
+
+    fn read_file(&self, path: &Path) -> Option<String> {
+        self.files.get(path).map(|data| data.clone())
     }
 }
 
 impl Hook for MemHook {
-    fn read(&self, path: &Path, _dir: Option<&Path>) -> io::Result<(PathBuf, String)> {
-        match self.files.get(path) {
-            Some(data) => Ok((path.to_path_buf(), data.clone())),
-            None => Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                path.to_string_lossy(),
-            )),
-        }
+    fn read(&self, path: &Path, dir: Option<&Path>) -> io::Result<(PathBuf, String)> {
+        dir
+        .and_then(|dir| {
+            let path = dir.join(path);
+            self.read_file(&path)
+            .map(|data| (path, data))
+        })
+        .or_else(|| {
+            self.files.get(path)
+            .map(|data| (path.to_path_buf(), data.clone()))
+        })
+        .ok_or(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("path: {:?}, dir: {:?}", path, dir),
+        ))
     }
 }

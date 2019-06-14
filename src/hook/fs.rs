@@ -23,10 +23,10 @@ impl FsHook {
         }
     }
 
-    pub fn include_dir(&mut self, dir: &Path) -> io::Result<()> {
+    pub fn include_dir(mut self, dir: &Path) -> io::Result<Self> {
         self.check_dir(dir)?;
         self.inc_dirs.push(dir.to_path_buf());
-        Ok(())
+        Ok(self)
     }
 
     fn check_dir(&self, dir: &Path) -> io::Result<()> {

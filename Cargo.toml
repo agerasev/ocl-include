@@ -4,6 +4,18 @@ version = "0.2.0"
 authors = ["Alexey Gerasev <alexey.gerasev@gmail.com>"]
 edition = "2018"
 
+description = "Simple preprocessor that implements #include mechanism for OpenCL source files "
+documentation = "https://docs.rs/ocl-include"
+homepage = "https://github.com/nthend/ocl-include"
+repository = "https://github.com/nthend/ocl-include"
+readme = "README.md"
+keywords = ["opencl", "include", "preprocessor"]
+categories = ["parser-implementations", "filesystem", "development-tools"]
+license = "MIT/Apache-2.0"
+
 [dependencies]
 regex = "1"
 lazy_static = "1.3.0"
+
+[dev-dependencies]
+indoc = "0.3"

@@ -12,4 +12,4 @@ pub trait Hook {
 
 pub use fs::FsHook;
 pub use mem::MemHook;
-//pub use list::ListHook;
+pub use list::ListHook;
