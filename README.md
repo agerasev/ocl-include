@@ -25,7 +25,7 @@ Simple preprocessor that implements #include mechanism for OpenCL source files.
 
 ## About
 
-OpenCL API doesn't provide mechanism for including header files into the main one, like in C and C++. This crate is a simple preprocessor that handles `#include ...` and `#pragma once` directives in source files, collects them over filesystem or memory, and gives a single string to the output that could be passed to OpenCL kernel builder.
+OpenCL API doesn't provide mechanism for including header files into the main one, like in C and C++. This crate is a simple preprocessor that handles `#include ...` and `#pragma once` directives in source files, collects them over filesystem or memory, and gives a single string to the output that could be passed to OpenCL kernel builder. Also it provides mechanism to find the source file and location in it by line number in resulting string, that is helpful for OpenCL compile error messages handling.
 
 ## Documentation
 
@@ -64,9 +64,9 @@ fn main() {
     let hook = FsHook::new()
     .include_dir(&Path::new("./examples")).unwrap();
 
-    let node = collect(&hook, Path::new("main.c")).unwrap();
+    let node = build(&hook, Path::new("main.c")).unwrap();
 
-    println!("{}", node.collect());
+    println!("{}", node.collect().0);
 }
 ```
 
@@ -96,9 +96,38 @@ fn main() {
         .include_dir(&Path::new("./examples")).unwrap()
     );
 
-    let node = collect(&hook, Path::new("main.c")).unwrap();
+    let node = build(&hook, Path::new("main.c")).unwrap();
 
-    println!("{}", node.collect());
+    println!("{}", node.collect().0);
+}
+```
+
+### Indexing
+
+`Node.collect()` also returns `Index` instance as seconds value. It could be used to find the source file and line number in it by line number in generated string.
+
+Let's imagine that our OpenCL compiler takes generated string and fails at some line. But line number isn't helpful for us because we don't know in which source file this line originate. Fortunately there is `Index::search` for this.
+
+```rust
+use std::path::Path;
+use ocl_include::*;
+
+fn main() {
+    let hook = FsHook::new()
+    .include_dir(&Path::new("./examples")).unwrap();
+
+    let node = build(&hook, Path::new("main.c")).unwrap();
+    let (generated, index) = node.collect();
+
+    // Let's imagine that we complie the code here
+    // and got a compiler message at specific line
+    let line = 4;
+    println!("line {}: '{}'", line, generated.lines().nth(line - 1).unwrap());
+
+    // This will find the origin of this line
+    let (path, local_line) = index.search(line - 1).unwrap();
+
+    println!("origin: '{}' at line {}", path.to_string_lossy(), local_line + 1);
 }
 ```
 

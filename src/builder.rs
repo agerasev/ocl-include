@@ -40,15 +40,15 @@ impl CacheEntry {
     }
 }
 
-pub struct Collector<'a> {
+pub struct Builder<'a> {
     hook: &'a dyn Hook,
     cache: HashMap<PathBuf, CacheEntry>,
     stack: Vec<PathBuf>,
 }
 
-impl<'a> Collector<'a> {
+impl<'a> Builder<'a> {
     fn new(hook: &'a dyn Hook) -> Self {
-        Collector {
+        Self {
             hook,
             cache: HashMap::new(),
             stack: Vec::new(),
@@ -65,7 +65,7 @@ impl<'a> Collector<'a> {
         })
     }
 
-    fn collect(&mut self, path: &Path, dir: Option<&Path>) -> io::Result<Option<Node>> {
+    fn build(&mut self, path: &Path, dir: Option<&Path>) -> io::Result<Option<Node>> {
         self.read(path, dir)
         .and_then(|(path, text)| {
             if self.stack.iter().map(|p| (*p == path) as u32).fold(0, |a, x| a + x) >= 2 {
@@ -108,7 +108,7 @@ impl<'a> Collector<'a> {
                         Some(ref path_buf) => Some(path_buf.as_path()),
                         None => None,
                     };
-                    self.collect(&path, dir_ref)
+                    self.build(&path, dir_ref)
                 }) {
                     Ok(node_opt) => match node_opt {
                         Some(node) => ParseLine::Node(node),
@@ -153,8 +153,8 @@ impl<'a> Collector<'a> {
     }
 }
 
-pub fn collect(hook: &dyn Hook, main: &Path) -> io::Result<Node> {
+pub fn build(hook: &dyn Hook, main: &Path) -> io::Result<Node> {
     let cwd = env::current_dir().ok();
-    Collector::new(hook).collect(&main, cwd.as_ref().map(|p| p.as_path()))
+    Builder::new(hook).build(&main, cwd.as_ref().map(|p| p.as_path()))
     .map(|root| root.unwrap())
 }

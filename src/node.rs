@@ -1,17 +1,76 @@
 use std::{
     path::{Path, PathBuf},
+    rc::Rc,
+    ops::Range,
+    cmp::Ordering,
 };
 
+#[derive(Debug)]
+struct IndexEntry {
+    name: Rc<PathBuf>,
+    start: usize,
+    range: Range<usize>,
+}
+
+pub struct Index {
+    segs: Vec<IndexEntry>,
+    size: usize,
+}
+
+impl Index {
+    fn new() -> Self {
+        Self {
+            segs: Vec::new(),
+            size: 0,
+        }
+    }
+
+    fn push(&mut self, name: Rc<PathBuf>, start: usize, size: usize) {
+        self.segs.push(IndexEntry {
+            name, start,
+            range: self.size..(self.size + size),
+        });
+        self.size += size;
+    }
+
+    fn append(&mut self, mut index: Index) {
+        for seg in index.segs.iter_mut() {
+            let r = &mut seg.range;
+            r.start += self.size;
+            r.end += self.size;
+        }
+        self.segs.append(&mut index.segs);
+        self.size += index.size;
+    }
+
+    pub fn search(&self, pos: usize) -> Option<(PathBuf, usize)> {
+        match self.segs.binary_search_by(|seg| {
+            if pos < seg.range.start {
+                Ordering::Greater
+            } else if pos >= seg.range.end {
+                Ordering::Less
+            } else {
+                Ordering::Equal
+            }
+        }) {
+            Ok(i) => {
+                let seg = &self.segs[i];
+                Some(((*seg.name).clone(), pos - seg.range.start + seg.start))
+            },
+            Err(_) => None,
+        }
+    }
+}
 
 pub struct Node {
     name: PathBuf,
     inner: Vec<(Node, usize)>,
     text: String,
-    index: Vec<usize>,
+    index: Vec<Range<usize>>,
 }
 
 impl Node {
-    pub fn new(name: &Path) -> Self {
+    pub(crate) fn new(name: &Path) -> Self {
         Self {
             name: name.to_path_buf(),
             inner: Vec::new(),
@@ -24,32 +83,48 @@ impl Node {
         &self.name
     }
 
-    pub fn add_line(&mut self, line: &str) {
-        self.index.push(self.text.len());
+    pub(crate) fn add_line(&mut self, line: &str) {
+        let plen = self.text.len();
         self.text.push_str(line.trim_end());
         self.text.push('\n');
+        self.index.push(plen..self.text.len());
     }
 
-    pub fn add_child(&mut self, node: Node) {
+    pub(crate) fn add_child(&mut self, node: Node) {
         self.add_line("");
-        self.inner.push((node, self.index.len()));
+        self.inner.push((node, self.index.len() - 1));
     }
 
     pub fn lines_count(&self) -> usize {
         self.index.len()
     }
 
-    pub fn collect(&self) -> String {
+    pub fn collect(&self) -> (String, Index) {
         let mut accum = String::new();
+        let mut index = Index::new();
+
+        let name = Rc::new(self.name.clone());
 
         let mut ppos = 0;
         for (node, pos) in self.inner.iter() {
-            accum.push_str(&self.text[ppos..*pos]);
-            accum.push_str(&node.collect());
-            ppos = *pos
-        }
-        accum.push_str(&self.text[ppos..]);
+            let start = self.index[ppos].start;
+            let end = self.index[*pos].end;
 
-        accum
+            accum.push_str(&self.text[start..end]);
+            index.push(name.clone(), ppos, pos - ppos + 1);
+
+            let (child_str, child_index) = node.collect();
+            accum.push_str(&child_str);
+            index.append(child_index);
+
+            ppos = *pos + 1;
+        }
+
+        if ppos < self.index.len() {
+            accum.push_str(&self.text[self.index[ppos].start..]);
+            index.push(name.clone(), ppos, self.index.len() - ppos);
+        }
+
+        (accum, index)
     }
 }

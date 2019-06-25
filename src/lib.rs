@@ -1,9 +1,9 @@
 mod hook;
 mod node;
-mod collector;
+mod builder;
 
 pub use hook::*;
-pub use collector::*;
+pub use builder::*;
 
 #[cfg(test)]
 mod test {
@@ -24,9 +24,9 @@ mod test {
         let hook = MemHook::new()
         .add_file(&Path::new("main.c"), main.to_string()).unwrap();
 
-        let node = collect(&hook, Path::new("main.c")).unwrap();
+        let node = build(&hook, Path::new("main.c")).unwrap();
 
-        assert_eq!(node.collect(), main);
+        assert_eq!(node.collect().0, main);
     }
     
     #[test]
@@ -34,19 +34,23 @@ mod test {
         let main = indoc!("
             #include <header.h>
             #include <header.h>
+            // Main function
             int main() {
                 return RET_CODE;
             }
         ");
         let header = indoc!("
             #pragma once
+            // Return code
             static const int RET_CODE = 0;
         ");
         let result = indoc!("
 
 
+            // Return code
             static const int RET_CODE = 0;
 
+            // Main function
             int main() {
                 return RET_CODE;
             }
@@ -56,9 +60,9 @@ mod test {
         .add_file(&Path::new("main.c"), main.to_string()).unwrap()
         .add_file(&Path::new("header.h"), header.to_string()).unwrap();
 
-        let node = collect(&hook, Path::new("main.c")).unwrap();
+        let node = build(&hook, Path::new("main.c")).unwrap();
 
-        assert_eq!(node.collect(), result);
+        assert_eq!(node.collect().0, result);
     }
 
     #[test]
@@ -75,11 +79,10 @@ mod test {
         .add_file(&Path::new("first.h"), first.to_string()).unwrap()
         .add_file(&Path::new("second.h"), second.to_string()).unwrap();
 
-        collect(&hook, Path::new("first.h")).unwrap();
+        build(&hook, Path::new("first.h")).unwrap();
     }
 
     #[test]
-    #[should_panic]
     fn recursion_prevented() {
         let first = indoc!("
             #pragma once
@@ -94,9 +97,9 @@ mod test {
         .add_file(&Path::new("first.h"), first.to_string()).unwrap()
         .add_file(&Path::new("second.h"), second.to_string()).unwrap();
 
-        let node = collect(&hook, Path::new("first.h")).unwrap();
+        let node = build(&hook, Path::new("first.h")).unwrap();
 
-        assert_eq!(node.collect(), "/n/n/n/n");
+        assert_eq!(node.collect().0, "\n\n\n\n");
     }
 
     #[test]
@@ -121,8 +124,105 @@ mod test {
         .add_file(&Path::new("h01.h"), h01.to_string()).unwrap()
         .add_file(&Path::new("h02.h"), h02.to_string()).unwrap();
 
-        let node = collect(&hook, Path::new("main.c")).unwrap();
+        let node = build(&hook, Path::new("main.c")).unwrap();
 
-        assert_eq!(node.collect(), "\n\n\n\n\nh01\nh02\n\n");
+        assert_eq!(node.collect().0, "\n\n\n\n\nh01\nh02\n\n");
+    }
+
+    #[test]
+    fn line_numbers() {
+        let main = indoc!("
+            0
+            1
+            2
+            #include <h01.h>
+            9
+            10
+            #include <h03.h>
+            15
+            16
+        ");
+        let h01 = indoc!("
+            4
+            #include <h02.h>
+            8
+        ");
+        let h02 = indoc!("
+            6
+            7
+        ");
+        let h03 = indoc!("
+            12
+            13
+            14
+        ");
+
+        let hook = MemHook::new()
+        .add_file(&Path::new("main.c"), main.to_string()).unwrap()
+        .add_file(&Path::new("h01.h"), h01.to_string()).unwrap()
+        .add_file(&Path::new("h02.h"), h02.to_string()).unwrap()
+        .add_file(&Path::new("h03.h"), h03.to_string()).unwrap();
+
+        let node = build(&hook, Path::new("main.c")).unwrap();
+        
+        let source = node.collect().0;
+        for (pos, line) in source.lines().enumerate() {
+            let tline = line.trim_end();
+            if tline.len() > 0 {
+                assert_eq!(tline.parse::<usize>().unwrap(), pos);
+            }
+        }
+    }
+
+    #[test]
+    fn indexing() {
+        let main = indoc!("
+            00
+            01
+            02
+            #include <h01.h>
+            04
+            05
+            #include <h03.h>
+            07
+            08
+        ");
+        let h01 = indoc!("
+            10
+            #include <h02.h>
+            12
+        ");
+        let h02 = indoc!("
+            20
+            21
+        ");
+        let h03 = indoc!("
+            30
+            31
+            32
+        ");
+
+        let hook = MemHook::new()
+        .add_file(&Path::new("main.c"), main.to_string()).unwrap()
+        .add_file(&Path::new("h01.h"), h01.to_string()).unwrap()
+        .add_file(&Path::new("h02.h"), h02.to_string()).unwrap()
+        .add_file(&Path::new("h03.h"), h03.to_string()).unwrap();
+
+        let node = build(&hook, Path::new("main.c")).unwrap();
+        
+        let (source, index) = node.collect();
+        for (pos, line) in source.lines().enumerate() {
+            let (name, lpos) = index.search(pos).unwrap();
+            let tline = line.trim_end();
+            if tline.len() > 0 {
+                let n = tline.parse::<usize>().unwrap();
+                let (f, l) = (n/10, n%10);
+                assert_eq!(match f {
+                    0 => "main.c".to_string(),
+                    x => format!("h0{}.h", x),
+                }, name.to_string_lossy());
+                assert_eq!(l, lpos);
+            }
+        }
     }
 }
