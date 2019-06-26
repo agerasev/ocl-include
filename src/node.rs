@@ -12,6 +12,7 @@ struct IndexEntry {
     range: Range<usize>,
 }
 
+/// Index that maps generated code locations to their origins
 pub struct Index {
     segs: Vec<IndexEntry>,
     size: usize,
@@ -43,6 +44,7 @@ impl Index {
         self.size += index.size;
     }
 
+    /// Maps line number in generated code to source file name and position in it
     pub fn search(&self, pos: usize) -> Option<(PathBuf, usize)> {
         match self.segs.binary_search_by(|seg| {
             if pos < seg.range.start {
@@ -62,6 +64,7 @@ impl Index {
     }
 }
 
+/// Tree of parsed source files
 pub struct Node {
     name: PathBuf,
     inner: Vec<(Node, usize)>,
@@ -99,6 +102,7 @@ impl Node {
         self.index.len()
     }
 
+    /// Generates resulting code string and mapping index for it
     pub fn collect(&self) -> (String, Index) {
         let mut accum = String::new();
         let mut index = Index::new();

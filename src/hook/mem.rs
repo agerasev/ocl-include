@@ -4,7 +4,7 @@ use std::collections::{HashMap};
 
 use super::{Hook};
 
-
+/// Hook for retrieving files from memory
 pub struct MemHook {
     files: HashMap<PathBuf, String>,
 }

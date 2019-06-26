@@ -40,7 +40,7 @@ impl CacheEntry {
     }
 }
 
-pub struct Builder<'a> {
+struct Builder<'a> {
     hook: &'a dyn Hook,
     cache: HashMap<PathBuf, CacheEntry>,
     stack: Vec<PathBuf>,
@@ -153,6 +153,9 @@ impl<'a> Builder<'a> {
     }
 }
 
+/// Reads and parses source files and resolves dependencies
+///
+/// Returns node tree that could be collected into resulting code string and index
 pub fn build(hook: &dyn Hook, main: &Path) -> io::Result<Node> {
     let cwd = env::current_dir().ok();
     Builder::new(hook).build(&main, cwd.as_ref().map(|p| p.as_path()))

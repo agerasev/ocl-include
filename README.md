@@ -25,7 +25,7 @@ Simple preprocessor that implements #include mechanism for OpenCL source files.
 
 ## About
 
-OpenCL API doesn't provide mechanism for including header files into the main one, like in C and C++. This crate is a simple preprocessor that handles `#include ...` and `#pragma once` directives in source files, collects them over filesystem or memory, and gives a single string to the output that could be passed to OpenCL kernel builder. Also it provides mechanism to find the source file and location in it by line number in resulting string, that is helpful for OpenCL compile error messages handling.
+OpenCL API doesn't provide mechanism for including header files into the main one, like in C and C++. This crate is a simple preprocessor that handles `#include ...` and `#pragma once` directives in source files, collects them over filesystem or memory, and gives a single string to the output that could be passed to OpenCL kernel builder. Also it provides mechanism to find the source file and location in it by line number in resulting string, that is helpful for OpenCL compiler messages handling.
 
 ## Documentation
 
@@ -34,7 +34,7 @@ OpenCL API doesn't provide mechanism for including header files into the main on
 
 ## Examples
 
-Let you have `main.c` and `header.h` files in `./kernels/` folder:
+Let you have `main.c` and `header.h` files in `./examples/` folder:
 
 `main.c`:
 ```c

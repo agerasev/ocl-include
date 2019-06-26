@@ -5,6 +5,7 @@ use std::{
 
 use super::{Hook};
 
+/// Hook for retrieving files from list of other hooks subsequently
 pub struct ListHook {
     hooks: Vec<Box<dyn Hook>>,
 }

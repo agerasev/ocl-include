@@ -4,6 +4,8 @@ mod builder;
 
 pub use hook::*;
 pub use builder::*;
+pub use node::*;
+
 
 #[cfg(test)]
 mod test {
