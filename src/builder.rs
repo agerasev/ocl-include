@@ -56,12 +56,13 @@ impl<'a> Builder<'a> {
     }
 
     fn read(&mut self, path: &Path, dir: Option<&Path>) -> io::Result<(PathBuf, String)> {
-        self.hook.read(path, dir).and_then(|(path, text)| {
+        self.hook.read(path, dir)
+        .map(|(path, text)| {
             match self.cache.entry(path.to_path_buf()) {
                 Entry::Occupied(mut v) => { v.get_mut().occured += 1; },
                 Entry::Vacant(v) => { v.insert(CacheEntry::new()); },
             }
-            Ok((path, text))
+            (path, text)
         })
     }
 
@@ -69,9 +70,7 @@ impl<'a> Builder<'a> {
         self.read(path, dir)
         .and_then(|(path, text)| {
             if self.stack.iter().map(|p| (*p == path) as u32).fold(0, |a, x| a + x) >= 2 {
-                Err(io::Error::new(io::ErrorKind::InvalidInput, format!(
-                    "recursion found in file: '{}'", path.to_string_lossy()
-                )))
+                Err(io::Error::new(io::ErrorKind::InvalidInput, "recursion found"))
             } else {
                 self.stack.push(path.clone());
                 Ok((path, text))
@@ -96,12 +95,9 @@ impl<'a> Builder<'a> {
                     } else if lb == "\"" && rb == "\"" {
                         Ok(Some(path.parent().unwrap().to_path_buf()))
                     } else {
-                        Err(io::Error::new(io::ErrorKind::InvalidData, format!(
-                            "error parsing file '{}' line {}: bad #include syntax",
-                            path.to_string_lossy(), node.lines_count(),
-                        )))
+                        Err(io::Error::new(io::ErrorKind::InvalidData, "bad #include syntax"))
                     }
-                    .map(|dir| (Path::new(inc_path).to_path_buf(), dir))
+                    .map(|dir| (PathBuf::from(inc_path), dir))
                 }
                 .and_then(|(path, dir)| {
                     let dir_ref = match dir {
@@ -109,6 +105,12 @@ impl<'a> Builder<'a> {
                         None => None,
                     };
                     self.build(&path, dir_ref)
+                })
+                .map_err(|err| {
+                    io::Error::new(err.kind(), format!(
+                        "{}\nin file '{}' at line {}",
+                        err, path.display(), node.lines_count(),
+                    ))
                 }) {
                     Ok(node_opt) => match node_opt {
                         Some(node) => ParseLine::Node(node),
@@ -137,7 +139,7 @@ impl<'a> Builder<'a> {
 
     fn parse(&mut self, path: &Path, text: String) -> io::Result<Option<Node>> {
         let mut node = Node::new(path);
-        for (line_no, line) in text.lines().enumerate() {
+        for line in text.lines() {
             match self.parse_line(path, line, &node) {
                 ParseLine::Text(text) => {
                     node.add_line(text);
@@ -146,12 +148,7 @@ impl<'a> Builder<'a> {
                     node.add_child(child_node);
                 },
                 ParseLine::Break => return Ok(None),
-                ParseLine::Err(e) => {
-                    return Err(io::Error::new(
-                        e.kind(),
-                        format!("{} in {} at line {}", e, path.display(), line_no),
-                    ))
-                },
+                ParseLine::Err(e) => return Err(e),
             }
         }
         Ok(Some(node))
