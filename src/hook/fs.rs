@@ -23,10 +23,14 @@ impl FsHook {
         }
     }
 
-    pub fn include_dir(mut self, dir: &Path) -> io::Result<Self> {
+    pub fn builder() -> FsHookBuilder {
+        FsHookBuilder { hook: Self::new() }
+    }
+
+    pub fn include_dir(&mut self, dir: &Path) -> io::Result<()> {
         self.check_dir(dir)?;
         self.inc_dirs.push(dir.to_path_buf());
-        Ok(self)
+        Ok(())
     }
 
     fn check_dir(&self, dir: &Path) -> io::Result<()> {
@@ -96,6 +100,20 @@ impl FsHook {
         }
 
         Err(io::Error::new(io::ErrorKind::NotFound, name.to_string_lossy()))
+    }
+}
+
+pub struct FsHookBuilder {
+    hook: FsHook,
+}
+
+impl FsHookBuilder {
+    pub fn include_dir(mut self, dir: &Path) -> io::Result<Self> {
+        self.hook.include_dir(dir).map(|()| self)
+    }
+
+    pub fn build(self) -> FsHook {
+        self.hook
     }
 }
 

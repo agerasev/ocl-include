@@ -14,9 +14,25 @@ impl ListHook {
     pub fn new() -> Self {
         Self { hooks: Vec::new() }
     }
-    pub fn add_hook<T: 'static + Hook>(mut self, hook: T) -> Self {
+    pub fn builder() -> ListHookBuilder {
+        ListHookBuilder { hook: Self::new() }
+    }
+    pub fn add_hook<T: 'static + Hook>(&mut self, hook: T) {
         self.hooks.push(Box::new(hook));
+    }
+}
+
+pub struct ListHookBuilder {
+    hook: ListHook,
+}
+
+impl ListHookBuilder {
+    pub fn add_hook<T: 'static + Hook>(mut self, hook: T) -> Self {
+        self.hook.add_hook(hook);
         self
+    }
+    pub fn build(self) -> ListHook {
+        self.hook
     }
 }
 

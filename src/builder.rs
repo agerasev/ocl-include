@@ -137,7 +137,7 @@ impl<'a> Builder<'a> {
 
     fn parse(&mut self, path: &Path, text: String) -> io::Result<Option<Node>> {
         let mut node = Node::new(path);
-        for line in text.lines() {
+        for (line_no, line) in text.lines().enumerate() {
             match self.parse_line(path, line, &node) {
                 ParseLine::Text(text) => {
                     node.add_line(text);
@@ -146,7 +146,12 @@ impl<'a> Builder<'a> {
                     node.add_child(child_node);
                 },
                 ParseLine::Break => return Ok(None),
-                ParseLine::Err(e) => return Err(e),
+                ParseLine::Err(e) => {
+                    return Err(io::Error::new(
+                        e.kind(),
+                        format!("{} in {} at line {}", e, path.display(), line_no),
+                    ))
+                },
             }
         }
         Ok(Some(node))

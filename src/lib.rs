@@ -23,8 +23,9 @@ mod test {
             }
         ");
 
-        let hook = MemHook::new()
-        .add_file(&Path::new("main.c"), main.to_string()).unwrap();
+        let hook = MemHook::builder()
+        .add_file(&Path::new("main.c"), main.to_string()).unwrap()
+        .build();
 
         let node = build(&hook, Path::new("main.c")).unwrap();
 
@@ -58,9 +59,10 @@ mod test {
             }
         ");
 
-        let hook = MemHook::new()
+        let hook = MemHook::builder()
         .add_file(&Path::new("main.c"), main.to_string()).unwrap()
-        .add_file(&Path::new("header.h"), header.to_string()).unwrap();
+        .add_file(&Path::new("header.h"), header.to_string()).unwrap()
+        .build();
 
         let node = build(&hook, Path::new("main.c")).unwrap();
 
@@ -77,9 +79,10 @@ mod test {
             #include <first.h>
         ");
 
-        let hook = MemHook::new()
+        let hook = MemHook::builder()
         .add_file(&Path::new("first.h"), first.to_string()).unwrap()
-        .add_file(&Path::new("second.h"), second.to_string()).unwrap();
+        .add_file(&Path::new("second.h"), second.to_string()).unwrap()
+        .build();
 
         build(&hook, Path::new("first.h")).unwrap();
     }
@@ -95,9 +98,10 @@ mod test {
             #include <first.h>
         ");
 
-        let hook = MemHook::new()
+        let hook = MemHook::builder()
         .add_file(&Path::new("first.h"), first.to_string()).unwrap()
-        .add_file(&Path::new("second.h"), second.to_string()).unwrap();
+        .add_file(&Path::new("second.h"), second.to_string()).unwrap()
+        .build();
 
         let node = build(&hook, Path::new("first.h")).unwrap();
 
@@ -121,10 +125,11 @@ mod test {
             h02
         ");
 
-        let hook = MemHook::new()
+        let hook = MemHook::builder()
         .add_file(&Path::new("main.c"), main.to_string()).unwrap()
         .add_file(&Path::new("h01.h"), h01.to_string()).unwrap()
-        .add_file(&Path::new("h02.h"), h02.to_string()).unwrap();
+        .add_file(&Path::new("h02.h"), h02.to_string()).unwrap()
+        .build();
 
         let node = build(&hook, Path::new("main.c")).unwrap();
 
@@ -159,11 +164,12 @@ mod test {
             14
         ");
 
-        let hook = MemHook::new()
+        let hook = MemHook::builder()
         .add_file(&Path::new("main.c"), main.to_string()).unwrap()
         .add_file(&Path::new("h01.h"), h01.to_string()).unwrap()
         .add_file(&Path::new("h02.h"), h02.to_string()).unwrap()
-        .add_file(&Path::new("h03.h"), h03.to_string()).unwrap();
+        .add_file(&Path::new("h03.h"), h03.to_string()).unwrap()
+        .build();
 
         let node = build(&hook, Path::new("main.c")).unwrap();
         
@@ -204,11 +210,12 @@ mod test {
             32
         ");
 
-        let hook = MemHook::new()
+        let hook = MemHook::builder()
         .add_file(&Path::new("main.c"), main.to_string()).unwrap()
         .add_file(&Path::new("h01.h"), h01.to_string()).unwrap()
         .add_file(&Path::new("h02.h"), h02.to_string()).unwrap()
-        .add_file(&Path::new("h03.h"), h03.to_string()).unwrap();
+        .add_file(&Path::new("h03.h"), h03.to_string()).unwrap()
+        .build();
 
         let node = build(&hook, Path::new("main.c")).unwrap();
         

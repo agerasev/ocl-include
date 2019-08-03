@@ -9,15 +9,18 @@ fn main() {
     }
     ";
 
-    let hook = ListHook::new()
+    let hook = ListHook::builder()
     .add_hook(
-        MemHook::new()
+        MemHook::builder()
         .add_file(&Path::new("main.c"), main.to_string()).unwrap()
+        .build()
     )
     .add_hook(
-        FsHook::new()
+        FsHook::builder()
         .include_dir(&Path::new("./examples")).unwrap()
-    );
+        .build()
+    )
+    .build();
 
     let node = build(&hook, Path::new("main.c")).unwrap();
 

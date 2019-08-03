@@ -20,6 +20,6 @@ pub trait Hook {
     fn read(&self, path: &Path, dir: Option<&Path>) -> io::Result<(PathBuf, String)>;
 }
 
-pub use fs::FsHook;
-pub use mem::MemHook;
-pub use list::ListHook;
+pub use fs::{FsHook, FsHookBuilder};
+pub use mem::{MemHook, MemHookBuilder};
+pub use list::{ListHook, ListHookBuilder};

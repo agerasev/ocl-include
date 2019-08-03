@@ -1,6 +1,6 @@
 use std::io;
 use std::path::{Path, PathBuf};
-use std::collections::{HashMap};
+use std::collections::hash_map::{HashMap, Entry};
 
 use super::{Hook};
 
@@ -14,15 +14,32 @@ impl MemHook {
         Self { files: HashMap::new() }
     }
 
-    pub fn add_file(mut self, name: &Path, data: String) -> io::Result<Self> {
-        match self.files.insert(name.to_path_buf(), data) {
-            Some(_) => Err(io::ErrorKind::AlreadyExists.into()),
-            None => Ok(self),
+    pub fn builder() -> MemHookBuilder {
+        MemHookBuilder { hook: Self::new() }
+    }
+
+    pub fn add_file(&mut self, name: &Path, data: String) -> io::Result<()> {
+        match self.files.entry(name.to_path_buf()) {
+            Entry::Occupied(_) => Err(io::ErrorKind::AlreadyExists.into()),
+            Entry::Vacant(v) => { v.insert(data); Ok(()) },
         }
     }
 
     fn read_file(&self, path: &Path) -> Option<String> {
         self.files.get(path).map(|data| data.clone())
+    }
+}
+
+pub struct MemHookBuilder {
+    hook: MemHook,
+}
+
+impl MemHookBuilder {
+    pub fn add_file(mut self, name: &Path, data: String) -> io::Result<Self> {
+        self.hook.add_file(name, data).map(|()| self)
+    }
+    pub fn build(self) -> MemHook {
+        self.hook
     }
 }
 

@@ -61,8 +61,9 @@ use std::path::Path;
 use ocl_include::*;
 
 fn main() {
-    let hook = FsHook::new()
-    .include_dir(&Path::new("./examples")).unwrap();
+    let hook = FsHook::builder()
+    .include_dir(&Path::new("./examples")).unwrap()
+    .build();
 
     let node = build(&hook, Path::new("main.c")).unwrap();
 
@@ -86,15 +87,18 @@ fn main() {
     }
     ";
 
-    let hook = ListHook::new()
+    let hook = ListHook::builder()
     .add_hook(
-        MemHook::new()
+        MemHook::builder()
         .add_file(&Path::new("main.c"), main.to_string()).unwrap()
+        .build()
     )
     .add_hook(
-        FsHook::new()
+        FsHook::builder()
         .include_dir(&Path::new("./examples")).unwrap()
-    );
+        .build()
+    )
+    .build();
 
     let node = build(&hook, Path::new("main.c")).unwrap();
 
@@ -113,8 +117,9 @@ use std::path::Path;
 use ocl_include::*;
 
 fn main() {
-    let hook = FsHook::new()
-    .include_dir(&Path::new("./examples")).unwrap();
+    let hook = FsHook::builder()
+    .include_dir(&Path::new("./examples")).unwrap()
+    .build();
 
     let node = build(&hook, Path::new("main.c")).unwrap();
     let (generated, index) = node.collect();
