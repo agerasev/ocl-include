@@ -15,12 +15,18 @@ pub struct FsHook {
     cache: Cell<Option<HashMap<PathBuf, String>>>,
 }
 
-impl FsHook {
-    pub fn new() -> Self {
+impl Default for FsHook {
+    fn default() -> Self {
         FsHook {
             inc_dirs: Vec::new(),
             cache: Cell::new(Some(HashMap::new())),
         }
+    }
+}
+
+impl FsHook {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn builder() -> FsHookBuilder {
@@ -74,7 +80,7 @@ impl FsHook {
             Ok(()) => Ok(Some(path)),
             Err(e) => match e.kind() {
                 io::ErrorKind::NotFound => Ok(None),
-                _ => return Err(e),
+                _ => Err(e),
             }
         }
     }
@@ -84,18 +90,15 @@ impl FsHook {
             return Ok(name.to_path_buf())
         }
 
-        match dir {
-            Some(dir) => match self.find_in_dir(dir, name)? {
-                Some(path) => return Ok(path),
-                None => (),
-            },
-            None => (),
+        if let Some(dir) = dir {
+            if let Some(path) = self.find_in_dir(dir, name)? {
+                return Ok(path);
+            }
         }
 
         for dir in self.inc_dirs.iter() {
-            match self.find_in_dir(dir, name)? {
-                Some(path) => return Ok(path),
-                None => (),
+            if let Some(path) = self.find_in_dir(dir, name)? {
+                return Ok(path);
             }
         }
 
@@ -123,13 +126,13 @@ impl Hook for FsHook {
         .and_then(|path| {
             let mut map = self.cache.take().unwrap();
             
-            let res = match map.entry(path.to_path_buf()) {
+            let res = match map.entry(path.clone()) {
                 Entry::Occupied(v) => Ok(v.get().clone()),
                 Entry::Vacant(v) => {
                     fs::read_to_string(&path)
-                    .and_then(|data| {
+                    .map(|data| {
                         v.insert(data.clone());
-                        Ok(data)
+                        data
                     })
                 }
             }

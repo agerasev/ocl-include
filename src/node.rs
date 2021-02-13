@@ -126,7 +126,7 @@ impl Node {
 
         if ppos < self.index.len() {
             accum.push_str(&self.text[self.index[ppos].start..]);
-            index.push(name.clone(), ppos, self.index.len() - ppos);
+            index.push(name, ppos, self.index.len() - ppos);
         }
 
         (accum, index)

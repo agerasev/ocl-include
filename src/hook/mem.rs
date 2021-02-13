@@ -9,9 +9,15 @@ pub struct MemHook {
     files: HashMap<PathBuf, String>,
 }
 
+impl Default for MemHook {
+    fn default() -> Self {
+        Self { files: HashMap::new() }
+    }
+}
+
 impl MemHook {
     pub fn new() -> Self {
-        Self { files: HashMap::new() }
+        Self::default()
     }
 
     pub fn builder() -> MemHookBuilder {
@@ -26,7 +32,7 @@ impl MemHook {
     }
 
     fn read_file(&self, path: &Path) -> Option<String> {
-        self.files.get(path).map(|data| data.clone())
+        self.files.get(path).cloned()
     }
 }
 
@@ -55,7 +61,7 @@ impl Hook for MemHook {
             self.files.get(path)
             .map(|data| (path.to_path_buf(), data.clone()))
         })
-        .ok_or(io::Error::new(
+        .ok_or_else(|| io::Error::new(
             io::ErrorKind::NotFound,
             format!("path: {:?}, dir: {:?}", path, dir),
         ))

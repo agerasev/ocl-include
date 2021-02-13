@@ -10,9 +10,15 @@ pub struct ListHook {
     hooks: Vec<Box<dyn Hook>>,
 }
 
+impl Default for ListHook {
+    fn default() -> Self {
+        Self { hooks: Vec::new() }
+    }
+}
+
 impl ListHook {
     pub fn new() -> Self {
-        Self { hooks: Vec::new() }
+        Self::default()
     }
     pub fn builder() -> ListHookBuilder {
         ListHookBuilder { hook: Self::new() }
@@ -55,9 +61,12 @@ impl Hook for ListHook {
             }
         }
 
-        res.unwrap_or(Err(io::Error::new(
-            io::ErrorKind::NotFound,
-            format!("path: {:?}, dir: {:?}", path, dir),
-        )))
+        match res {
+            Some(x) => x,
+            None => Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("path: {:?}, dir: {:?}", path, dir),
+            )),
+        }
     }
 }
