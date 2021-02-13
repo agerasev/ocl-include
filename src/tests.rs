@@ -6,11 +6,11 @@ use crate::*;
 
 #[test]
 fn main_only() {
-    let main = indoc!("
+    let main = indoc! {"
         int main() {
             return RET_CODE;
         }
-    ");
+    "};
 
     let hook = MemHook::builder()
         .add_file(&Path::new("main.c"), main.to_string()).unwrap()
@@ -23,20 +23,20 @@ fn main_only() {
 
 #[test]
 fn single_header() {
-    let main = indoc!("
+    let main = indoc! {"
         #include <header.h>
         #include <header.h>
         // Main function
         int main() {
             return RET_CODE;
         }
-    ");
-    let header = indoc!("
+    "};
+    let header = indoc! {"
         #pragma once
         // Return code
         static const int RET_CODE = 0;
-    ");
-    let result = indoc!("
+    "};
+    let result = indoc! {"
 
 
         // Return code
@@ -46,7 +46,7 @@ fn single_header() {
         int main() {
             return RET_CODE;
         }
-    ");
+    "};
 
     let hook = MemHook::builder()
         .add_file(&Path::new("main.c"), main.to_string()).unwrap()
@@ -61,12 +61,12 @@ fn single_header() {
 #[test]
 #[should_panic]
 fn recursion() {
-    let first = indoc!("
+    let first = indoc! {"
         #include <second.h>
-    ");
-    let second = indoc!("
+    "};
+    let second = indoc! {"
         #include <first.h>
-    ");
+    "};
 
     let hook = MemHook::builder()
         .add_file(&Path::new("first.h"), first.to_string()).unwrap()
@@ -78,14 +78,14 @@ fn recursion() {
 
 #[test]
 fn recursion_prevented() {
-    let first = indoc!("
+    let first = indoc! {"
         #pragma once
         #include <second.h>
-    ");
-    let second = indoc!("
+    "};
+    let second = indoc! {"
         #pragma once
         #include <first.h>
-    ");
+    "};
 
     let hook = MemHook::builder()
         .add_file(&Path::new("first.h"), first.to_string()).unwrap()
@@ -99,20 +99,20 @@ fn recursion_prevented() {
 
 #[test]
 fn multiple_headers() {
-    let main = indoc!("
+    let main = indoc! {"
         #include <h02.h>
         #include <h01.h>
-    ");
-    let h01 = indoc!("
+    "};
+    let h01 = indoc! {"
         #pragma once
         #include <h02.h>
         h01
-    ");
-    let h02 = indoc!("
+    "};
+    let h02 = indoc! {"
         #pragma once
         #include <h01.h>
         h02
-    ");
+    "};
 
     let hook = MemHook::builder()
         .add_file(&Path::new("main.c"), main.to_string()).unwrap()
@@ -127,7 +127,7 @@ fn multiple_headers() {
 
 #[test]
 fn line_numbers() {
-    let main = indoc!("
+    let main = indoc! {"
         0
         1
         2
@@ -137,21 +137,21 @@ fn line_numbers() {
         #include <h03.h>
         15
         16
-    ");
-    let h01 = indoc!("
+    "};
+    let h01 = indoc! {"
         4
         #include <h02.h>
         8
-    ");
-    let h02 = indoc!("
+    "};
+    let h02 = indoc! {"
         6
         7
-    ");
-    let h03 = indoc!("
+    "};
+    let h03 = indoc! {"
         12
         13
         14
-    ");
+    "};
 
     let hook = MemHook::builder()
         .add_file(&Path::new("main.c"), main.to_string()).unwrap()
@@ -173,7 +173,7 @@ fn line_numbers() {
 
 #[test]
 fn indexing() {
-    let main = indoc!("
+    let main = indoc! {"
         00
         01
         02
@@ -183,21 +183,21 @@ fn indexing() {
         #include <h03.h>
         07
         08
-    ");
-    let h01 = indoc!("
+    "};
+    let h01 = indoc! {"
         10
         #include <h02.h>
         12
-    ");
-    let h02 = indoc!("
+    "};
+    let h02 = indoc! {"
         20
         21
-    ");
-    let h03 = indoc!("
+    "};
+    let h03 = indoc! {"
         30
         31
         32
-    ");
+    "};
 
     let hook = MemHook::builder()
         .add_file(&Path::new("main.c"), main.to_string()).unwrap()

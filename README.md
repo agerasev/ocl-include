@@ -9,16 +9,16 @@
 
 [crates_badge]: https://img.shields.io/crates/v/ocl-include.svg
 [docs_badge]: https://docs.rs/ocl-include/badge.svg
-[travis_badge]: https://api.travis-ci.org/nthend/ocl-include.svg
-[appveyor_badge]: https://ci.appveyor.com/api/projects/status/github/nthend/ocl-include?branch=master&svg=true
-[codecov_badge]: https://codecov.io/gh/nthend/ocl-include/graphs/badge.svg
+[travis_badge]: https://api.travis-ci.org/agerasev/ocl-include.svg
+[appveyor_badge]: https://ci.appveyor.com/api/projects/status/github/agerasev/ocl-include?branch=master&svg=true
+[codecov_badge]: https://codecov.io/gh/agerasev/ocl-include/graphs/badge.svg
 [license_badge]: https://img.shields.io/crates/l/ocl-include.svg
 
 [crates]: https://crates.io/crates/ocl-include
 [docs]: https://docs.rs/ocl-include
-[travis]: https://travis-ci.org/nthend/ocl-include
-[appveyor]: https://ci.appveyor.com/project/nthend/ocl-include
-[codecov]: https://codecov.io/gh/nthend/ocl-include
+[travis]: https://travis-ci.org/agerasev/ocl-include
+[appveyor]: https://ci.appveyor.com/project/agerasev/ocl-include
+[codecov]: https://codecov.io/gh/agerasev/ocl-include
 [license]: #license
 
 Simple preprocessor that implements #include mechanism for OpenCL source files.
@@ -27,10 +27,7 @@ Simple preprocessor that implements #include mechanism for OpenCL source files.
 
 OpenCL API doesn't provide mechanism for including header files into the main one, like in C and C++. This crate is a simple preprocessor that handles `#include ...` and `#pragma once` directives in source files, collects them over filesystem or memory, and gives a single string to the output that could be passed to OpenCL kernel builder. Also it provides mechanism to find the source file and location in it by line number in resulting string, that is helpful for OpenCL compiler messages handling.
 
-## Documentation
-
-+ [`crates.io` version documentation](https://docs.rs/ocl-include)
-+ [`master` branch documentation](https://nthend.github.io/ocl-include/target/doc/ocl_include/index.html)
+## [Documentation](https://docs.rs/ocl-include)
 
 ## Examples
 
