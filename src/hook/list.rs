@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::{Hook};
+use super::Hook;
 
 /// Hook for retrieving files from list of other hooks subsequently
 pub struct ListHook {
@@ -57,7 +57,7 @@ impl Hook for ListHook {
                         res = Some(Err(e));
                         break;
                     }
-                }
+                },
             }
         }
 

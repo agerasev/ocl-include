@@ -1,26 +1,21 @@
 use std::{
-    io,
-    env,
+    collections::hash_map::{Entry, HashMap},
+    env, io,
     path::{Path, PathBuf},
-    collections::hash_map::{HashMap, Entry},
 };
 
 use regex::{Regex, RegexBuilder};
 
 use lazy_static::lazy_static;
 
-use crate::{
-    node::{Node},
-    hook::{Hook},
-};
+use crate::{hook::Hook, node::Node};
 
-
-lazy_static!{
+lazy_static! {
     static ref INCLUDE: Regex = RegexBuilder::new(
-        r#"^\s*#include\s*(.)(.*)(.)\s*$"#
+        r#"^\s*#include\s*(.)(.*)(.)\s*$"#,
     ).multi_line(true).build().unwrap();
     static ref PRAGMA_ONCE: Regex = RegexBuilder::new(
-        r#"^\s*#pragma\s+once\s*$"#
+        r#"^\s*#pragma\s+once\s*$"#,
     ).multi_line(true).build().unwrap();
 }
 
@@ -56,11 +51,14 @@ impl<'a> Builder<'a> {
     }
 
     fn read(&mut self, path: &Path, dir: Option<&Path>) -> io::Result<(PathBuf, String)> {
-        self.hook.read(path, dir)
-        .map(|(path, text)| {
+        self.hook.read(path, dir).map(|(path, text)| {
             match self.cache.entry(path.clone()) {
-                Entry::Occupied(mut v) => { v.get_mut().occured += 1; },
-                Entry::Vacant(v) => { v.insert(CacheEntry::new()); },
+                Entry::Occupied(mut v) => {
+                    v.get_mut().occured += 1;
+                }
+                Entry::Vacant(v) => {
+                    v.insert(CacheEntry::new());
+                }
             }
             (path, text)
         })
@@ -68,22 +66,23 @@ impl<'a> Builder<'a> {
 
     fn build(&mut self, path: &Path, dir: Option<&Path>) -> io::Result<Option<Node>> {
         self.read(path, dir)
-        .and_then(|(path, text)| {
-            if self.stack.iter().filter(|p| **p == path).count() >= 2 {
-                Err(io::Error::new(io::ErrorKind::InvalidData, "recursion found"))
-            } else {
-                self.stack.push(path.clone());
-                Ok((path, text))
-            }
-        })
-        .and_then(|(path, text)| self.parse(&path, text).map(|x| (x, path)))
-        .map(|(x, path)| {
-            assert_eq!(self.stack.pop().unwrap(), path);
-            x
-        })
+            .and_then(|(path, text)| {
+                if self.stack.iter().filter(|p| **p == path).count() >= 2 {
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "recursion found",
+                    ))
+                } else {
+                    self.stack.push(path.clone());
+                    Ok((path, text))
+                }
+            })
+            .and_then(|(path, text)| self.parse(&path, text).map(|x| (x, path)))
+            .map(|(x, path)| {
+                assert_eq!(self.stack.pop().unwrap(), path);
+                x
+            })
     }
-
-    
 
     fn parse_line<'b>(&mut self, path: &Path, line: &'b str, node: &Node) -> ParseLine<'b> {
         if let Some(cap) = INCLUDE.captures(line) {
@@ -95,14 +94,20 @@ impl<'a> Builder<'a> {
                 } else if lb == "\"" && rb == "\"" {
                     Ok(Some(path.parent().unwrap().to_path_buf()))
                 } else {
-                    Err(io::Error::new(io::ErrorKind::InvalidData, "bad #include syntax"))
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "bad #include syntax",
+                    ))
                 }
                 .and_then(|dir_opt| self.build(inc_path, dir_opt.as_deref()))
                 .map_err(|err| {
-                    io::Error::new(err.kind(), format!(
-                        "{}\nin file '{}' at line {}",
-                        err, path.display(), node.lines_count(),
-                    ))
+                    io::Error::new(
+                        err.kind(),
+                        format!(
+                            "{}\nin file '{}' at line {}",
+                            err, path.display(), node.lines_count(),
+                        ),
+                    )
                 })
             };
             match inc_res {
@@ -146,6 +151,7 @@ impl<'a> Builder<'a> {
 /// Returns node tree that could be collected into resulting code string and index
 pub fn build(hook: &dyn Hook, main: &Path) -> io::Result<Node> {
     let cwd = env::current_dir().ok();
-    Builder::new(hook).build(&main, cwd.as_deref())
-    .map(|root| root.unwrap())
+    Builder::new(hook)
+        .build(&main, cwd.as_deref())
+        .map(|root| root.unwrap())
 }

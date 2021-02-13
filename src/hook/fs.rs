@@ -1,13 +1,11 @@
 use std::{
-    io,
-    fs,
     cell::Cell,
+    collections::hash_map::{Entry, HashMap},
+    fs, io,
     path::{Path, PathBuf},
-    collections::hash_map::{HashMap, Entry},
 };
 
-use super::{Hook};
-
+use super::Hook;
 
 /// Hook for reading files from filesystem
 pub struct FsHook {
@@ -81,13 +79,13 @@ impl FsHook {
             Err(e) => match e.kind() {
                 io::ErrorKind::NotFound => Ok(None),
                 _ => Err(e),
-            }
+            },
         }
     }
 
     fn find_file(&self, dir: Option<&Path>, name: &Path) -> io::Result<PathBuf> {
         if name.is_absolute() {
-            return Ok(name.to_path_buf())
+            return Ok(name.to_path_buf());
         }
 
         if let Some(dir) = dir {
@@ -102,7 +100,10 @@ impl FsHook {
             }
         }
 
-        Err(io::Error::new(io::ErrorKind::NotFound, name.to_string_lossy()))
+        Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            name.to_string_lossy(),
+        ))
     }
 }
 
@@ -122,19 +123,15 @@ impl FsHookBuilder {
 
 impl Hook for FsHook {
     fn read(&self, path: &Path, dir: Option<&Path>) -> io::Result<(PathBuf, String)> {
-        self.find_file(dir, path)
-        .and_then(|path| {
+        self.find_file(dir, path).and_then(|path| {
             let mut map = self.cache.take().unwrap();
-            
+
             let res = match map.entry(path.clone()) {
                 Entry::Occupied(v) => Ok(v.get().clone()),
-                Entry::Vacant(v) => {
-                    fs::read_to_string(&path)
-                    .map(|data| {
-                        v.insert(data.clone());
-                        data
-                    })
-                }
+                Entry::Vacant(v) => fs::read_to_string(&path).map(|data| {
+                    v.insert(data.clone());
+                    data
+                }),
             }
             .map(|data| (path, data));
 

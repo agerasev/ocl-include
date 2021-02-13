@@ -1,8 +1,8 @@
 use std::{
+    cmp::Ordering,
+    ops::Range,
     path::{Path, PathBuf},
     rc::Rc,
-    ops::Range,
-    cmp::Ordering,
 };
 
 #[derive(Debug)]
@@ -28,7 +28,8 @@ impl Index {
 
     fn push(&mut self, name: Rc<PathBuf>, start: usize, size: usize) {
         self.segs.push(IndexEntry {
-            name, start,
+            name,
+            start,
             range: self.size..(self.size + size),
         });
         self.size += size;
@@ -58,7 +59,7 @@ impl Index {
             Ok(i) => {
                 let seg = &self.segs[i];
                 Some(((*seg.name).clone(), pos - seg.range.start + seg.start))
-            },
+            }
             Err(_) => None,
         }
     }

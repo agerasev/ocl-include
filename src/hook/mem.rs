@@ -1,8 +1,8 @@
+use std::collections::hash_map::{Entry, HashMap};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::collections::hash_map::{HashMap, Entry};
 
-use super::{Hook};
+use super::Hook;
 
 /// Hook for retrieving files from memory
 pub struct MemHook {
@@ -11,7 +11,9 @@ pub struct MemHook {
 
 impl Default for MemHook {
     fn default() -> Self {
-        Self { files: HashMap::new() }
+        Self {
+            files: HashMap::new(),
+        }
     }
 }
 
@@ -27,7 +29,10 @@ impl MemHook {
     pub fn add_file(&mut self, name: &Path, data: String) -> io::Result<()> {
         match self.files.entry(name.to_path_buf()) {
             Entry::Occupied(_) => Err(io::ErrorKind::AlreadyExists.into()),
-            Entry::Vacant(v) => { v.insert(data); Ok(()) },
+            Entry::Vacant(v) => {
+                v.insert(data);
+                Ok(())
+            },
         }
     }
 
@@ -51,19 +56,20 @@ impl MemHookBuilder {
 
 impl Hook for MemHook {
     fn read(&self, path: &Path, dir: Option<&Path>) -> io::Result<(PathBuf, String)> {
-        dir
-        .and_then(|dir| {
+        dir.and_then(|dir| {
             let path = dir.join(path);
-            self.read_file(&path)
-            .map(|data| (path, data))
+            self.read_file(&path).map(|data| (path, data))
         })
         .or_else(|| {
-            self.files.get(path)
-            .map(|data| (path.to_path_buf(), data.clone()))
+            self.files
+                .get(path)
+                .map(|data| (path.to_path_buf(), data.clone()))
         })
-        .ok_or_else(|| io::Error::new(
-            io::ErrorKind::NotFound,
-            format!("path: {:?}, dir: {:?}", path, dir),
-        ))
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("path: {:?}, dir: {:?}", path, dir),
+            )
+        })
     }
 }
