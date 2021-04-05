@@ -244,3 +244,128 @@ fn indexing() {
         }
     }
 }
+
+#[test]
+fn define_gates() {
+    let input = indoc! {"
+        1
+        #ifdef ABC
+        2
+        #ifdef XYZ
+        3
+        #ifndef DEF
+        4
+        #else // DEF
+        5
+        #endif // DEF
+        6
+        #else // XYZ
+        7
+        #endif // XYZ
+        8
+        #else // !ABC
+        9
+        #ifdef XYZ
+        A
+        #else // !XYZ
+        B
+        #endif // XYZ
+        C
+        #endif // ABC
+        D
+        #if defined(ABC)
+        E
+        #endif // ABC
+        F
+    "};
+
+    let output = indoc! {"
+        1
+
+        2
+        #ifdef XYZ
+        3
+
+
+
+        5
+
+        6
+        #else // XYZ
+        7
+        #endif // XYZ
+        8
+
+
+
+
+
+
+
+
+
+        D
+        #if defined(ABC)
+        E
+        #endif // ABC
+        F
+    "};
+
+    let hook = source::Mem::builder()
+        .add_file(&Path::new("input.c"), input.to_string())
+        .unwrap()
+        .build();
+    let parser = Parser::builder()
+        .add_source(hook)
+        .add_flag(String::from("ABC"), true)
+        .add_flag(String::from("DEF"), true)
+        .build();
+    let node = parser.parse(Path::new("input.c")).unwrap();
+
+    assert_eq!(node.collect().0, output);
+}
+
+#[test]
+fn define_gate_include() {
+    let main = indoc! {"
+        #ifdef ABC
+        #include <h0.h>
+        #else // !ABC
+        #include <h1.h>
+        #endif // ABC
+    "};
+    let h0 = indoc! {"
+        H0 0
+        H0 1
+        H0 2
+    "};
+    let h1 = indoc! {"
+        H1 0
+        H1 1
+        H1 2
+    "};
+    
+    let result = indoc! {"
+
+
+
+
+        H1 0
+        H1 1
+        H1 2
+
+    "};
+
+    let hook = source::Mem::builder()
+        .add_file(&Path::new("main.c"), main.to_string()).unwrap()
+        .add_file(&Path::new("h0.h"), h0.to_string()).unwrap()
+        .add_file(&Path::new("h1.h"), h1.to_string()).unwrap()
+        .build();
+    let parser = Parser::builder()
+        .add_source(hook)
+        .add_flag(String::from("ABC"), false)
+        .build();
+    let node = parser.parse(Path::new("main.c")).unwrap();
+
+    assert_eq!(node.collect().0, result);
+}

@@ -15,10 +15,13 @@ lazy_static! {
     static ref INCLUDE: Regex = make_regex(r#"^\s*#include\s*([<"])(.*)([>"])\s*(?://)?.*$"#);
     static ref PRAGMA_ONCE: Regex = make_regex(r#"^\s*#pragma\s+once\s*(?://)?.*$"#);
     static ref IFDEF: Regex = make_regex(r#"^\s*#if(n?)def\s+(.*)\s*(?://)?.*$"#);
+    static ref IF: Regex = make_regex(r#"^\s*#if\s.*$"#);
+    static ref ELSE: Regex = make_regex(r#"^\s*#else\s*(?://)?.*$"#);
     static ref ENDIF: Regex = make_regex(r#"^\s*#endif\s*(?://)?.*$"#);
 }
 
 enum ParseLine<'a> {
+    Empty,
     Text(&'a str),
     Node(Node),
     Break,
@@ -44,12 +47,15 @@ impl<'a, 'b> FileContext<'a, 'b> {
     pub fn parse(mut self, text: String) -> io::Result<Option<Node>> {
         for line in text.lines() {
             match self.parse_line(line) {
+                ParseLine::Empty => {
+                    self.node.add_line("");
+                },
                 ParseLine::Text(text) => {
                     self.node.add_line(text);
-                }
+                },
                 ParseLine::Node(child_node) => {
                     self.node.add_child(child_node);
-                }
+                },
                 ParseLine::Break => return Ok(None),
                 ParseLine::Err(e) => return Err(e),
             }
@@ -59,35 +65,64 @@ impl<'a, 'b> FileContext<'a, 'b> {
 
     fn parse_line<'c>(&mut self, line: &'c str) -> ParseLine<'c> {
         let path = self.node.name().to_path_buf();
-        if let Some(cap) = IFDEF.captures(line) {
+        if PRAGMA_ONCE.is_match(line) {
+            if self.context.is_file_occured(&path) {
+                ParseLine::Break
+            } else {
+                ParseLine::Empty
+            }
+        } else if let Some(cap) = IFDEF.captures(line) {
             let name = &cap[2];
             match self.context.flags().get(name) {
                 Some(&flag_value) => {
                     let value = cap[1].is_empty();
-                    self.gate_stack.push(Gate::Known(String::from(name), value != flag_value));
-                    ParseLine::Text("")
+                    self.gate_stack.push(Gate::Known(String::from(name), value == flag_value));
+                    ParseLine::Empty
                 },
                 None => {
                     self.gate_stack.push(Gate::Unknown);
-                    ParseLine::Text(line)
+                    if self.gate_stack.is_open() {
+                        ParseLine::Text(line)
+                    } else {
+                        ParseLine::Empty
+                    }
                 }
             }
-        } else if ENDIF.captures(line).is_some() {
+        } else if IF.is_match(line) {
+            self.gate_stack.push(Gate::Unknown);
+            if self.gate_stack.is_open() {
+                ParseLine::Text(line)
+            } else {
+                ParseLine::Empty
+            }
+        } else if ELSE.is_match(line) {
+            match self.gate_stack.invert_last() {
+                Ok(known) => if known {
+                    ParseLine::Empty
+                } else if self.gate_stack.is_open() {
+                    ParseLine::Text(line)
+                } else {
+                    ParseLine::Empty
+                },
+                Err(()) => ParseLine::Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Unexpected #else",
+                )),
+            }
+        } else if ENDIF.is_match(line) {
             match self.gate_stack.pop() {
                 Some(gate) => match gate {
-                    Gate::Known(_, _) => ParseLine::Text(""),
-                    Gate::Unknown => ParseLine::Text(line),
+                    Gate::Known(_, _) => ParseLine::Empty,
+                    Gate::Unknown => if self.gate_stack.is_open() {
+                        ParseLine::Text(line)
+                    } else {
+                        ParseLine::Empty
+                    },
                 },
                 None => ParseLine::Err(io::Error::new(
                     io::ErrorKind::InvalidData,
-                    "Extra #endif",
+                    "Unexpected #endif",
                 )),
-            }
-        } else if PRAGMA_ONCE.is_match(line) {
-            if self.context.is_file_occured(&path) {
-                ParseLine::Break
-            } else {
-                ParseLine::Text("")
             }
         } else if self.gate_stack.is_open() {
             if let Some(cap) = INCLUDE.captures(line) {
@@ -120,7 +155,7 @@ impl<'a, 'b> FileContext<'a, 'b> {
                 match inc_res {
                     Ok(node_opt) => match node_opt {
                         Some(node) => ParseLine::Node(node),
-                        None => ParseLine::Text(""),
+                        None => ParseLine::Empty,
                     },
                     Err(err) => ParseLine::Err(err),
                 }
@@ -128,7 +163,7 @@ impl<'a, 'b> FileContext<'a, 'b> {
                 ParseLine::Text(line)
             }
         } else {
-            ParseLine::Text("")
+            ParseLine::Empty
         }
     }
 }
