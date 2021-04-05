@@ -2,11 +2,15 @@ use ocl_include::*;
 use std::path::Path;
 
 fn main() {
-    let hook = FsHook::builder()
-        .include_dir(&Path::new("./examples")).unwrap()
+    let parser = Parser::builder()
+        .add_source(
+            source::Fs::builder()
+                .include_dir(&Path::new("./examples"))
+                .unwrap()
+                .build(),
+        )
         .build();
-
-    let node = build(&hook, Path::new("main.c")).unwrap();
+    let node = parser.parse(Path::new("main.c")).unwrap();
     let (generated, index) = node.collect();
 
     // Let's imagine that we complie the code here

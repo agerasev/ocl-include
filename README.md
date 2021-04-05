@@ -54,15 +54,19 @@ static const int RET_CODE = 0;
 The follwong code takes `main.c` from the filesystem and includes `header.h` into it.
 
 ```rust
-use std::path::Path;
 use ocl_include::*;
+use std::path::Path;
 
 fn main() {
-    let hook = FsHook::builder()
-    .include_dir(&Path::new("./examples")).unwrap()
-    .build();
-
-    let node = build(&hook, Path::new("main.c")).unwrap();
+    let parser = Parser::builder()
+        .add_source(
+            source::Fs::builder()
+                .include_dir(&Path::new("./examples"))
+                .unwrap()
+                .build(),
+        )
+        .build();
+    let node = parser.parse(Path::new("main.c")).unwrap();
 
     println!("{}", node.collect().0);
 }
@@ -73,8 +77,8 @@ fn main() {
 The follwong code takes `main.c` source from the memory and includes `header.h` into it from the filesystem.
 
 ```rust
-use std::path::Path;
 use ocl_include::*;
+use std::path::Path;
 
 fn main() {
     let main = r"
@@ -84,20 +88,21 @@ fn main() {
     }
     ";
 
-    let hook = ListHook::builder()
-    .add_hook(
-        MemHook::builder()
-        .add_file(&Path::new("main.c"), main.to_string()).unwrap()
-        .build()
-    )
-    .add_hook(
-        FsHook::builder()
-        .include_dir(&Path::new("./examples")).unwrap()
-        .build()
-    )
-    .build();
-
-    let node = build(&hook, Path::new("main.c")).unwrap();
+    let parser = Parser::builder()
+        .add_source(
+            source::Mem::builder()
+                .add_file(&Path::new("main.c"), main.to_string())
+                .unwrap()
+                .build(),
+        )
+        .add_source(
+            source::Fs::builder()
+                .include_dir(&Path::new("./examples"))
+                .unwrap()
+                .build(),
+        )
+        .build();
+    let node = parser.parse(Path::new("main.c")).unwrap();
 
     println!("{}", node.collect().0);
 }
@@ -110,21 +115,29 @@ fn main() {
 Let's imagine that our OpenCL compiler takes generated string and fails at some line. But line number isn't helpful for us because we don't know in which source file this line originate. Fortunately there is `Index::search` for this.
 
 ```rust
-use std::path::Path;
 use ocl_include::*;
+use std::path::Path;
 
 fn main() {
-    let hook = FsHook::builder()
-    .include_dir(&Path::new("./examples")).unwrap()
-    .build();
-
-    let node = build(&hook, Path::new("main.c")).unwrap();
+    let parser = Parser::builder()
+        .add_source(
+            source::Fs::builder()
+                .include_dir(&Path::new("./examples"))
+                .unwrap()
+                .build(),
+        )
+        .build();
+    let node = parser.parse(Path::new("main.c")).unwrap();
     let (generated, index) = node.collect();
 
     // Let's imagine that we complie the code here
     // and got a compiler message at specific line
     let line = 4;
-    println!("line {}: '{}'", line, generated.lines().nth(line - 1).unwrap());
+    println!(
+        "line {}: '{}'",
+        line,
+        generated.lines().nth(line - 1).unwrap()
+    );
 
     // This will find the origin of this line
     let (path, local_line) = index.search(line - 1).unwrap();
@@ -133,15 +146,21 @@ fn main() {
 }
 ```
 
-## Hooks
+## Sources
 
-Hook is a handler that retrieve files by their names.
+Source is a handler that retrieves files by their names.
 
-The crate contains the following hooks now: 
+The crate contains the following sources now: 
 
-+ `FsHook`: takes files from the filesystem.
-+ `MemHook`: retrieves the source from the memory.
-+ `ListHook`: contains a list of other hooks and tries to retrieve source from them subsequently.
++ `Fs`: takes files from the filesystem.
++ `Mem`: retrieves the source from the memory.
+
+Also the following compositions are also sources:
+
++ `Vec<S> where S: Source`: Tries to retrieve file from sources subsequently.
++ `&S where S: Source`
++ `Box<dyn Source>`
++ `Rc<S> where S: Source`
 
 ## License
 

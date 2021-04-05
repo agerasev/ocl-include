@@ -5,30 +5,32 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::Hook;
+use super::Source;
 
-/// Hook for reading files from filesystem
-pub struct FsHook {
+/// Source for reading files from filesystem.
+pub struct Fs {
     inc_dirs: Vec<PathBuf>,
     cache: Cell<Option<HashMap<PathBuf, String>>>,
 }
 
-impl Default for FsHook {
+impl Default for Fs {
     fn default() -> Self {
-        FsHook {
+        Fs {
             inc_dirs: Vec::new(),
             cache: Cell::new(Some(HashMap::new())),
         }
     }
 }
 
-impl FsHook {
+impl Fs {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn builder() -> FsHookBuilder {
-        FsHookBuilder { hook: Self::new() }
+    pub fn builder() -> FsBuilder {
+        FsBuilder {
+            source: Self::new(),
+        }
     }
 
     pub fn include_dir(&mut self, dir: &Path) -> io::Result<()> {
@@ -107,21 +109,21 @@ impl FsHook {
     }
 }
 
-pub struct FsHookBuilder {
-    hook: FsHook,
+pub struct FsBuilder {
+    source: Fs,
 }
 
-impl FsHookBuilder {
+impl FsBuilder {
     pub fn include_dir(mut self, dir: &Path) -> io::Result<Self> {
-        self.hook.include_dir(dir).map(|()| self)
+        self.source.include_dir(dir).map(|()| self)
     }
 
-    pub fn build(self) -> FsHook {
-        self.hook
+    pub fn build(self) -> Fs {
+        self.source
     }
 }
 
-impl Hook for FsHook {
+impl Source for Fs {
     fn read(&self, path: &Path, dir: Option<&Path>) -> io::Result<(PathBuf, String)> {
         self.find_file(dir, path).and_then(|path| {
             let mut map = self.cache.take().unwrap();

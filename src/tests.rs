@@ -12,11 +12,12 @@ fn main_only() {
         }
     "};
 
-    let hook = MemHook::builder()
-        .add_file(&Path::new("main.c"), main.to_string()).unwrap()
+    let hook = source::Mem::builder()
+        .add_file(&Path::new("main.c"), main.to_string())
+        .unwrap()
         .build();
-
-    let node = build(&hook, Path::new("main.c")).unwrap();
+    let parser = Parser::builder().add_source(hook).build();
+    let node = parser.parse(Path::new("main.c")).unwrap();
 
     assert_eq!(node.collect().0, main);
 }
@@ -48,12 +49,14 @@ fn single_header() {
         }
     "};
 
-    let hook = MemHook::builder()
-        .add_file(&Path::new("main.c"), main.to_string()).unwrap()
-        .add_file(&Path::new("header.h"), header.to_string()).unwrap()
+    let hook = source::Mem::builder()
+        .add_file(&Path::new("main.c"), main.to_string())
+        .unwrap()
+        .add_file(&Path::new("header.h"), header.to_string())
+        .unwrap()
         .build();
-
-    let node = build(&hook, Path::new("main.c")).unwrap();
+    let parser = Parser::builder().add_source(hook).build();
+    let node = parser.parse(Path::new("main.c")).unwrap();
 
     assert_eq!(node.collect().0, result);
 }
@@ -68,12 +71,14 @@ fn recursion() {
         #include <first.h>
     "};
 
-    let hook = MemHook::builder()
-        .add_file(&Path::new("first.h"), first.to_string()).unwrap()
-        .add_file(&Path::new("second.h"), second.to_string()).unwrap()
+    let hook = source::Mem::builder()
+        .add_file(&Path::new("first.h"), first.to_string())
+        .unwrap()
+        .add_file(&Path::new("second.h"), second.to_string())
+        .unwrap()
         .build();
-
-    build(&hook, Path::new("first.h")).unwrap();
+    let parser = Parser::builder().add_source(hook).build();
+    parser.parse(Path::new("first.h")).unwrap();
 }
 
 #[test]
@@ -87,12 +92,14 @@ fn recursion_prevented() {
         #include <first.h>
     "};
 
-    let hook = MemHook::builder()
-        .add_file(&Path::new("first.h"), first.to_string()).unwrap()
-        .add_file(&Path::new("second.h"), second.to_string()).unwrap()
+    let hook = source::Mem::builder()
+        .add_file(&Path::new("first.h"), first.to_string())
+        .unwrap()
+        .add_file(&Path::new("second.h"), second.to_string())
+        .unwrap()
         .build();
-
-    let node = build(&hook, Path::new("first.h")).unwrap();
+    let parser = Parser::builder().add_source(hook).build();
+    let node = parser.parse(Path::new("first.h")).unwrap();
 
     assert_eq!(node.collect().0, "\n\n\n\n");
 }
@@ -114,13 +121,16 @@ fn multiple_headers() {
         h02
     "};
 
-    let hook = MemHook::builder()
-        .add_file(&Path::new("main.c"), main.to_string()).unwrap()
-        .add_file(&Path::new("h01.h"), h01.to_string()).unwrap()
-        .add_file(&Path::new("h02.h"), h02.to_string()).unwrap()
+    let hook = source::Mem::builder()
+        .add_file(&Path::new("main.c"), main.to_string())
+        .unwrap()
+        .add_file(&Path::new("h01.h"), h01.to_string())
+        .unwrap()
+        .add_file(&Path::new("h02.h"), h02.to_string())
+        .unwrap()
         .build();
-
-    let node = build(&hook, Path::new("main.c")).unwrap();
+    let parser = Parser::builder().add_source(hook).build();
+    let node = parser.parse(Path::new("main.c")).unwrap();
 
     assert_eq!(node.collect().0, "\n\n\n\n\nh01\nh02\n\n");
 }
@@ -153,14 +163,18 @@ fn line_numbers() {
         14
     "};
 
-    let hook = MemHook::builder()
-        .add_file(&Path::new("main.c"), main.to_string()).unwrap()
-        .add_file(&Path::new("h01.h"), h01.to_string()).unwrap()
-        .add_file(&Path::new("h02.h"), h02.to_string()).unwrap()
-        .add_file(&Path::new("h03.h"), h03.to_string()).unwrap()
+    let hook = source::Mem::builder()
+        .add_file(&Path::new("main.c"), main.to_string())
+        .unwrap()
+        .add_file(&Path::new("h01.h"), h01.to_string())
+        .unwrap()
+        .add_file(&Path::new("h02.h"), h02.to_string())
+        .unwrap()
+        .add_file(&Path::new("h03.h"), h03.to_string())
+        .unwrap()
         .build();
-
-    let node = build(&hook, Path::new("main.c")).unwrap();
+    let parser = Parser::builder().add_source(hook).build();
+    let node = parser.parse(Path::new("main.c")).unwrap();
 
     let source = node.collect().0;
     for (pos, line) in source.lines().enumerate() {
@@ -199,14 +213,18 @@ fn indexing() {
         32
     "};
 
-    let hook = MemHook::builder()
-        .add_file(&Path::new("main.c"), main.to_string()).unwrap()
-        .add_file(&Path::new("h01.h"), h01.to_string()).unwrap()
-        .add_file(&Path::new("h02.h"), h02.to_string()).unwrap()
-        .add_file(&Path::new("h03.h"), h03.to_string()).unwrap()
+    let hook = source::Mem::builder()
+        .add_file(&Path::new("main.c"), main.to_string())
+        .unwrap()
+        .add_file(&Path::new("h01.h"), h01.to_string())
+        .unwrap()
+        .add_file(&Path::new("h02.h"), h02.to_string())
+        .unwrap()
+        .add_file(&Path::new("h03.h"), h03.to_string())
+        .unwrap()
         .build();
-
-    let node = build(&hook, Path::new("main.c")).unwrap();
+    let parser = Parser::builder().add_source(hook).build();
+    let node = parser.parse(Path::new("main.c")).unwrap();
 
     let (source, index) = node.collect();
     for (pos, line) in source.lines().enumerate() {

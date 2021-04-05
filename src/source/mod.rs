@@ -1,12 +1,12 @@
-mod fs;
-mod list;
-mod mem;
+pub mod container;
+pub mod fs;
+pub mod mem;
 
 use std::io;
 use std::path::{Path, PathBuf};
 
-/// Something that may provide file content by its name
-pub trait Hook {
+/// Something that may provide file content by its name.
+pub trait Source {
     /// Performs file loading
     ///
     /// Arguments:
@@ -19,6 +19,5 @@ pub trait Hook {
     fn read(&self, path: &Path, dir: Option<&Path>) -> io::Result<(PathBuf, String)>;
 }
 
-pub use fs::{FsHook, FsHookBuilder};
-pub use list::{ListHook, ListHookBuilder};
-pub use mem::{MemHook, MemHookBuilder};
+pub use fs::Fs;
+pub use mem::Mem;

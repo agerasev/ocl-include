@@ -2,14 +2,14 @@ use std::collections::hash_map::{Entry, HashMap};
 use std::io;
 use std::path::{Path, PathBuf};
 
-use super::Hook;
+use super::Source;
 
-/// Hook for retrieving files from memory
-pub struct MemHook {
+/// Source for retrieving files from memory.
+pub struct Mem {
     files: HashMap<PathBuf, String>,
 }
 
-impl Default for MemHook {
+impl Default for Mem {
     fn default() -> Self {
         Self {
             files: HashMap::new(),
@@ -17,13 +17,15 @@ impl Default for MemHook {
     }
 }
 
-impl MemHook {
+impl Mem {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn builder() -> MemHookBuilder {
-        MemHookBuilder { hook: Self::new() }
+    pub fn builder() -> MemBuilder {
+        MemBuilder {
+            source: Self::new(),
+        }
     }
 
     pub fn add_file(&mut self, name: &Path, data: String) -> io::Result<()> {
@@ -32,7 +34,7 @@ impl MemHook {
             Entry::Vacant(v) => {
                 v.insert(data);
                 Ok(())
-            },
+            }
         }
     }
 
@@ -41,20 +43,20 @@ impl MemHook {
     }
 }
 
-pub struct MemHookBuilder {
-    hook: MemHook,
+pub struct MemBuilder {
+    source: Mem,
 }
 
-impl MemHookBuilder {
+impl MemBuilder {
     pub fn add_file(mut self, name: &Path, data: String) -> io::Result<Self> {
-        self.hook.add_file(name, data).map(|()| self)
+        self.source.add_file(name, data).map(|()| self)
     }
-    pub fn build(self) -> MemHook {
-        self.hook
+    pub fn build(self) -> Mem {
+        self.source
     }
 }
 
-impl Hook for MemHook {
+impl Source for Mem {
     fn read(&self, path: &Path, dir: Option<&Path>) -> io::Result<(PathBuf, String)> {
         dir.and_then(|dir| {
             let path = dir.join(path);
