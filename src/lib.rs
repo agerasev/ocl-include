@@ -1,11 +1,11 @@
 mod node;
-mod parser;
+mod parse;
 #[cfg(test)]
 mod tests;
 
 pub mod source;
 
 pub use node::*;
-pub use parser::*;
+pub use parse::*;
 
 pub use source::Source;
