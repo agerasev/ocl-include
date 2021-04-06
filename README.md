@@ -146,6 +146,12 @@ fn main() {
 }
 ```
 
+## Other preprocessing functionality 
+
+The parser also supports filtering code with simple preprocessor gates (`#if(n)def`, `#else`, `#endif`).
+
+By default the filtration is disabled, to enable it for specific definitions use `ParserBuilder::add_flag(flag_name, is_defined)`.
+
 ## Sources
 
 Source is a handler that retrieves files by their names.
