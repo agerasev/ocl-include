@@ -1,13 +1,10 @@
-use std::{
-    collections::hash_map::Entry,
-    io,
-    path::{Path, PathBuf},
+use super::{
+    file_context::FileContext,
+    parser::{FileCache, FileCacheEntry, Flags},
 };
 use crate::{node::Node, source::Source};
-use super::{
-    parser::{Flags, FileCache, FileCacheEntry},
-    file_context::FileContext,
-};
+use std::{collections::hash_map::Entry, io};
+use uni_path::{Path, PathBuf};
 
 pub struct Context<'a> {
     source: &'a dyn Source,

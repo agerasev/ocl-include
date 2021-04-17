@@ -1,9 +1,6 @@
 use super::Source;
-use std::{
-    io,
-    path::{Path, PathBuf},
-    rc::Rc,
-};
+use std::{io, rc::Rc};
+use uni_path::{Path, PathBuf};
 
 /// Vector of sources is also source.
 impl<S: Source> Source for Vec<S> {
@@ -29,7 +26,7 @@ impl<S: Source> Source for Vec<S> {
             Some(x) => x,
             None => Err(io::Error::new(
                 io::ErrorKind::NotFound,
-                format!("path: {:?}, dir: {:?}", path, dir),
+                format!("path: {}, dir: {:?}", path, dir),
             )),
         }
     }

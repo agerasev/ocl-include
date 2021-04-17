@@ -1,6 +1,8 @@
-use std::collections::hash_map::{Entry, HashMap};
-use std::io;
-use std::path::{Path, PathBuf};
+use std::{
+    collections::hash_map::{Entry, HashMap},
+    io,
+};
+use uni_path::{Path, PathBuf};
 
 use super::Source;
 
@@ -70,7 +72,7 @@ impl Source for Mem {
         .ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::NotFound,
-                format!("path: {:?}, dir: {:?}", path, dir),
+                format!("path: {}, dir: {:?}", path, dir),
             )
         })
     }

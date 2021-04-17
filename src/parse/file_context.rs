@@ -1,14 +1,15 @@
-use std::{io, path::Path};
-use regex::{Regex, RegexBuilder};
-use lazy_static::lazy_static;
+use super::{
+    context::Context,
+    gate::{Gate, GateStack},
+};
 use crate::node::Node;
-use super::{context::Context, gate::{Gate, GateStack}};
+use lazy_static::lazy_static;
+use regex::{Regex, RegexBuilder};
+use std::io;
+use uni_path::Path;
 
 fn make_regex(expr: &str) -> Regex {
-    RegexBuilder::new(expr)
-        .multi_line(true)
-        .build()
-        .unwrap()
+    RegexBuilder::new(expr).multi_line(true).build().unwrap()
 }
 
 lazy_static! {
@@ -34,7 +35,6 @@ pub struct FileContext<'a, 'b> {
     gate_stack: GateStack,
 }
 
-
 impl<'a, 'b> FileContext<'a, 'b> {
     pub fn new(path: &Path, context: &'b mut Context<'a>) -> Self {
         Self {
@@ -49,13 +49,13 @@ impl<'a, 'b> FileContext<'a, 'b> {
             match self.parse_line(line) {
                 ParseLine::Empty => {
                     self.node.add_line("");
-                },
+                }
                 ParseLine::Text(text) => {
                     self.node.add_line(text);
-                },
+                }
                 ParseLine::Node(child_node) => {
                     self.node.add_child(child_node);
-                },
+                }
                 ParseLine::Break => return Ok(None),
                 ParseLine::Err(e) => return Err(e),
             }
@@ -76,9 +76,10 @@ impl<'a, 'b> FileContext<'a, 'b> {
             match self.context.flags().get(name) {
                 Some(&flag_value) => {
                     let value = cap[1].is_empty();
-                    self.gate_stack.push(Gate::Known(String::from(name), value == flag_value));
+                    self.gate_stack
+                        .push(Gate::Known(String::from(name), value == flag_value));
                     ParseLine::Empty
-                },
+                }
                 None => {
                     self.gate_stack.push(Gate::Unknown);
                     if self.gate_stack.is_open() {
@@ -97,13 +98,15 @@ impl<'a, 'b> FileContext<'a, 'b> {
             }
         } else if ELSE.is_match(line) {
             match self.gate_stack.invert_last() {
-                Ok(known) => if known {
-                    ParseLine::Empty
-                } else if self.gate_stack.is_open() {
-                    ParseLine::Text(line)
-                } else {
-                    ParseLine::Empty
-                },
+                Ok(known) => {
+                    if known {
+                        ParseLine::Empty
+                    } else if self.gate_stack.is_open() {
+                        ParseLine::Text(line)
+                    } else {
+                        ParseLine::Empty
+                    }
+                }
                 Err(()) => ParseLine::Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     "Unexpected #else",
@@ -113,11 +116,13 @@ impl<'a, 'b> FileContext<'a, 'b> {
             match self.gate_stack.pop() {
                 Some(gate) => match gate {
                     Gate::Known(_, _) => ParseLine::Empty,
-                    Gate::Unknown => if self.gate_stack.is_open() {
-                        ParseLine::Text(line)
-                    } else {
-                        ParseLine::Empty
-                    },
+                    Gate::Unknown => {
+                        if self.gate_stack.is_open() {
+                            ParseLine::Text(line)
+                        } else {
+                            ParseLine::Empty
+                        }
+                    }
                 },
                 None => ParseLine::Err(io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -146,7 +151,7 @@ impl<'a, 'b> FileContext<'a, 'b> {
                             format!(
                                 "{}\nin file '{}' at line {}",
                                 err,
-                                path.display(),
+                                path,
                                 self.node.lines_count(),
                             ),
                         )

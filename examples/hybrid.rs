@@ -1,5 +1,5 @@
 use ocl_include::*;
-use std::path::Path;
+use uni_path::Path;
 
 fn main() {
     let main = r"

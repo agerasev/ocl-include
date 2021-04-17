@@ -1,11 +1,7 @@
-use std::{
-    cell::RefCell,
-    collections::hash_map::HashMap,
-    io,
-    path::{Path, PathBuf},
-};
-use crate::{node::Node, source::Source};
 use super::context::Context;
+use crate::{node::Node, source::Source};
+use std::{cell::RefCell, collections::hash_map::HashMap, io};
+use uni_path::{Path, PathBuf};
 
 pub struct FileCacheEntry {
     pub occured: usize,
@@ -78,7 +74,7 @@ impl Parser {
             root.ok_or_else(|| {
                 io::Error::new(
                     io::ErrorKind::NotFound,
-                    format!("Root file '{:?}' not found", main),
+                    format!("Root file '{}' not found", main),
                 )
             })
         })

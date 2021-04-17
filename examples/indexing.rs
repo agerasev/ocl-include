@@ -1,5 +1,5 @@
 use ocl_include::*;
-use std::path::Path;
+use uni_path::Path;
 
 fn main() {
     let parser = Parser::builder()
@@ -25,5 +25,5 @@ fn main() {
     // This will find the origin of this line
     let (path, local_line) = index.search(line - 1).unwrap();
 
-    println!("origin: '{}' at line {}", path.display(), local_line + 1);
+    println!("origin: '{}' at line {}", path, local_line + 1);
 }

@@ -24,7 +24,10 @@ pub struct GateStack {
 
 impl Default for GateStack {
     fn default() -> Self {
-        Self { stack: Vec::new(), state: true }
+        Self {
+            stack: Vec::new(),
+            state: true,
+        }
     }
 }
 
@@ -37,7 +40,10 @@ impl GateStack {
     }
     pub fn push(&mut self, gate: Gate) {
         self.state = self.state && gate.is_open();
-        self.stack.push(GateState { gate, inverted: false });
+        self.stack.push(GateState {
+            gate,
+            inverted: false,
+        });
     }
     pub fn pop(&mut self) -> Option<Gate> {
         let gs_opt = self.stack.pop();
@@ -64,7 +70,7 @@ impl GateStack {
                         self.state = false;
                     }
                     true
-                },
+                }
                 Gate::Unknown => false,
             })
         } else {

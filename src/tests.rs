@@ -1,4 +1,4 @@
-use std::path::Path;
+use uni_path::Path;
 
 use indoc::indoc;
 
@@ -238,7 +238,7 @@ fn indexing() {
                     0 => "main.c".to_string(),
                     x => format!("h0{}.h", x),
                 },
-                name.to_string_lossy(),
+                name.to_string(),
             );
             assert_eq!(l, lpos);
         }
@@ -344,7 +344,7 @@ fn define_gate_include() {
         H1 1
         H1 2
     "};
-    
+
     let result = indoc! {"
 
 
@@ -357,9 +357,12 @@ fn define_gate_include() {
     "};
 
     let hook = source::Mem::builder()
-        .add_file(&Path::new("main.c"), main.to_string()).unwrap()
-        .add_file(&Path::new("h0.h"), h0.to_string()).unwrap()
-        .add_file(&Path::new("h1.h"), h1.to_string()).unwrap()
+        .add_file(&Path::new("main.c"), main.to_string())
+        .unwrap()
+        .add_file(&Path::new("h0.h"), h0.to_string())
+        .unwrap()
+        .add_file(&Path::new("h1.h"), h1.to_string())
+        .unwrap()
         .build();
     let parser = Parser::builder()
         .add_source(hook)

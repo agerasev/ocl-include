@@ -3,7 +3,7 @@ pub mod fs;
 pub mod mem;
 
 use std::io;
-use std::path::{Path, PathBuf};
+use uni_path::{Path, PathBuf};
 
 /// Something that may provide file content by its name.
 pub trait Source {
