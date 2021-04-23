@@ -30,8 +30,8 @@ impl Mem {
         }
     }
 
-    pub fn add_file(&mut self, name: &Path, data: String) -> io::Result<()> {
-        match self.files.entry(name.to_path_buf()) {
+    pub fn add_file<P: AsRef<Path>>(&mut self, name: &P, data: String) -> io::Result<()> {
+        match self.files.entry(name.as_ref().to_path_buf()) {
             Entry::Occupied(_) => Err(io::ErrorKind::AlreadyExists.into()),
             Entry::Vacant(v) => {
                 v.insert(data);
@@ -40,8 +40,8 @@ impl Mem {
         }
     }
 
-    fn read_file(&self, path: &Path) -> Option<String> {
-        self.files.get(path).cloned()
+    fn read_file<P: AsRef<Path>>(&self, path: &P) -> Option<String> {
+        self.files.get(path.as_ref()).cloned()
     }
 }
 
@@ -50,9 +50,10 @@ pub struct MemBuilder {
 }
 
 impl MemBuilder {
-    pub fn add_file(mut self, name: &Path, data: String) -> io::Result<Self> {
+    pub fn add_file<P: AsRef<Path>>(mut self, name: &P, data: String) -> io::Result<Self> {
         self.source.add_file(name, data).map(|()| self)
     }
+
     pub fn build(self) -> Mem {
         self.source
     }
