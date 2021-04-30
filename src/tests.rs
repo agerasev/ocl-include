@@ -185,6 +185,25 @@ fn line_numbers() {
     }
 }
 
+fn assert_line_index(source: &str, index: &Index) {
+    for (pos, line) in source.lines().enumerate() {
+        let (name, lpos) = index.search(pos).unwrap();
+        let tline = line.trim_end();
+        if !tline.is_empty() {
+            let n = tline.parse::<usize>().unwrap();
+            let (f, l) = (n / 10, n % 10);
+            assert_eq!(
+                match f {
+                    0 => "main.c".to_string(),
+                    x => format!("h0{}.h", x),
+                },
+                name.to_string(),
+            );
+            assert_eq!(l, lpos);
+        }
+    }
+}
+
 #[test]
 fn indexing() {
     let main = indoc! {"
@@ -227,23 +246,50 @@ fn indexing() {
     let node = parser.parse(Path::new("main.c")).unwrap();
 
     let (source, index) = node.collect();
-    for (pos, line) in source.lines().enumerate() {
-        let (name, lpos) = index.search(pos).unwrap();
-        let tline = line.trim_end();
-        if !tline.is_empty() {
-            let n = tline.parse::<usize>().unwrap();
-            let (f, l) = (n / 10, n % 10);
-            assert_eq!(
-                match f {
-                    0 => "main.c".to_string(),
-                    x => format!("h0{}.h", x),
-                },
-                name.to_string(),
-            );
-            assert_eq!(l, lpos);
-        }
-    }
+    assert_line_index(&source, &index);
 }
+
+#[test]
+fn indexing_once() {
+    let main = indoc! {"
+        00
+        01
+        02
+        #include <h01.h>
+        04
+        05
+        #include <h02.h>
+        07
+        08
+    "};
+    let h01 = indoc! {"
+        #pragma once
+        11
+        #include <h02.h>
+        13
+    "};
+    let h02 = indoc! {"
+        #pragma once
+        21
+        #include <h01.h>
+        23
+    "};
+
+    let hook = source::Mem::builder()
+        .add_file(&Path::new("main.c"), main.to_string())
+        .unwrap()
+        .add_file(&Path::new("h01.h"), h01.to_string())
+        .unwrap()
+        .add_file(&Path::new("h02.h"), h02.to_string())
+        .unwrap()
+        .build();
+    let parser = Parser::builder().add_source(hook).build();
+    let node = parser.parse(Path::new("main.c")).unwrap();
+
+    let (source, index) = node.collect();
+    assert_line_index(&source, &index);
+}
+
 
 #[test]
 fn define_gates() {
