@@ -55,7 +55,7 @@ The follwong code takes `main.c` from the filesystem and includes `header.h` int
 
 ```rust
 use ocl_include::*;
-use uni_path::Path;
+use std::path::Path;
 
 fn main() {
     let parser = Parser::builder()
@@ -78,7 +78,7 @@ The follwong code takes `main.c` source from the memory and includes `header.h` 
 
 ```rust
 use ocl_include::*;
-use uni_path::Path;
+use std::path::Path;
 
 fn main() {
     let main = r"
@@ -116,7 +116,7 @@ Let's imagine that our OpenCL compiler takes generated string and fails at some 
 
 ```rust
 use ocl_include::*;
-use uni_path::Path;
+use std::path::Path;
 
 fn main() {
     let parser = Parser::builder()

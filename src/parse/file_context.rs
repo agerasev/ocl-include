@@ -5,8 +5,7 @@ use super::{
 use crate::node::Node;
 use lazy_static::lazy_static;
 use regex::{Regex, RegexBuilder};
-use std::io;
-use uni_path::Path;
+use std::{io, path::Path};
 
 fn make_regex(expr: &str) -> Regex {
     RegexBuilder::new(expr).multi_line(true).build().unwrap()
@@ -149,7 +148,7 @@ impl<'a, 'b> FileContext<'a, 'b> {
                         io::Error::new(
                             err.kind(),
                             format!(
-                                "{}\nin file '{}' at line {}",
+                                "{}\nin file {:?} at line {}",
                                 err,
                                 path,
                                 self.node.lines_count(),

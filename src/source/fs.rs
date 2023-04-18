@@ -2,8 +2,8 @@ use std::{
     cell::Cell,
     collections::hash_map::{Entry, HashMap},
     fs, io,
+    path::{Path, PathBuf},
 };
-use uni_path::{Path, PathBuf};
 
 use super::Source;
 
@@ -40,11 +40,11 @@ impl Fs {
     }
 
     fn check_dir(&self, dir: &Path) -> io::Result<()> {
-        let meta = fs::metadata(dir.as_str())?;
+        let meta = fs::metadata(dir)?;
         if !meta.is_dir() {
             Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                format!("'{}' is not a directory", dir),
+                format!("{:?} is not a directory", dir),
             ))
         } else {
             Ok(())
@@ -59,12 +59,12 @@ impl Fs {
             return Ok(());
         }
 
-        match fs::metadata(path.as_str()) {
+        match fs::metadata(path) {
             Ok(meta) => {
                 if !meta.is_file() {
                     Err(io::Error::new(
                         io::ErrorKind::InvalidData,
-                        format!("'{}' is not a file", path),
+                        format!("{:?} is not a file", path),
                     ))
                 } else {
                     Ok(())
@@ -102,7 +102,10 @@ impl Fs {
             }
         }
 
-        Err(io::Error::new(io::ErrorKind::NotFound, name.to_string()))
+        Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            name.to_string_lossy(),
+        ))
     }
 }
 
@@ -111,8 +114,8 @@ pub struct FsBuilder {
 }
 
 impl FsBuilder {
-    pub fn include_dir(mut self, dir: &Path) -> io::Result<Self> {
-        self.source.include_dir(dir).map(|()| self)
+    pub fn include_dir<P: AsRef<Path>>(mut self, dir: P) -> io::Result<Self> {
+        self.source.include_dir(dir.as_ref()).map(|()| self)
     }
 
     pub fn build(self) -> Fs {
@@ -127,7 +130,7 @@ impl Source for Fs {
 
             let res = match map.entry(path.clone()) {
                 Entry::Occupied(v) => Ok(v.get().clone()),
-                Entry::Vacant(v) => fs::read_to_string(path.as_str()).map(|data| {
+                Entry::Vacant(v) => fs::read_to_string(&path).map(|data| {
                     v.insert(data.clone());
                     data
                 }),

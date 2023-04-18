@@ -1,4 +1,4 @@
-use uni_path::Path;
+use std::path::Path;
 
 use indoc::indoc;
 
@@ -194,10 +194,10 @@ fn assert_line_index(source: &str, index: &Index) {
             let (f, l) = (n / 10, n % 10);
             assert_eq!(
                 match f {
-                    0 => "main.c".to_string(),
+                    0 => String::from("main.c"),
                     x => format!("h0{}.h", x),
                 },
-                name.to_string(),
+                name.to_string_lossy(),
             );
             assert_eq!(l, lpos);
         }
@@ -289,7 +289,6 @@ fn indexing_once() {
     let (source, index) = node.collect();
     assert_line_index(&source, &index);
 }
-
 
 #[test]
 fn define_gates() {

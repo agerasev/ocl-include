@@ -1,6 +1,6 @@
 [package]
 name = "ocl-include"
-version = "0.5.1"
+version = "0.6.0"
 authors = ["Alexey Gerasev <alexey.gerasev@gmail.com>"]
 edition = "2018"
 
@@ -16,7 +16,6 @@ license = "MIT/Apache-2.0"
 [dependencies]
 regex = "1"
 lazy_static = "1.4"
-uni-path = "1"
 
 [dev-dependencies]
 indoc = "1.0"

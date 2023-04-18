@@ -1,7 +1,11 @@
 use super::context::Context;
 use crate::{node::Node, source::Source};
-use std::{cell::RefCell, collections::hash_map::HashMap, io};
-use uni_path::{Path, PathBuf};
+use std::{
+    cell::RefCell,
+    collections::hash_map::HashMap,
+    io,
+    path::{Path, PathBuf},
+};
 
 pub struct FileCacheEntry {
     pub occured: usize,
@@ -21,18 +25,10 @@ pub struct Parser {
     file_cache: RefCell<FileCache>,
 }
 
+#[derive(Default)]
 pub struct ParserBuilder {
     sources: Vec<Box<dyn Source>>,
     flags: Flags,
-}
-
-impl Default for ParserBuilder {
-    fn default() -> Self {
-        Self {
-            sources: Vec::new(),
-            flags: Flags::new(),
-        }
-    }
 }
 
 impl ParserBuilder {
@@ -69,12 +65,12 @@ impl Parser {
     /// Returns node tree that could be collected into resulting code string and index.
     pub fn parse(&self, main: &Path) -> io::Result<Node> {
         let mut file_cache = self.file_cache.borrow_mut();
-        let mut context = Context::new(self.source.as_ref(), &self.flags, &mut *file_cache);
+        let mut context = Context::new(self.source.as_ref(), &self.flags, &mut file_cache);
         context.build_tree(main, None).and_then(|root| {
             root.ok_or_else(|| {
                 io::Error::new(
                     io::ErrorKind::NotFound,
-                    format!("Root file '{}' not found", main),
+                    format!("Root file {:?} not found", main),
                 )
             })
         })

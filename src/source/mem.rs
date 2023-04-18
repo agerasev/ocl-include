@@ -1,22 +1,15 @@
 use std::{
     collections::hash_map::{Entry, HashMap},
     io,
+    path::{Path, PathBuf},
 };
-use uni_path::{Path, PathBuf};
 
 use super::Source;
 
 /// Source for retrieving files from memory.
+#[derive(Default)]
 pub struct Mem {
     files: HashMap<PathBuf, String>,
-}
-
-impl Default for Mem {
-    fn default() -> Self {
-        Self {
-            files: HashMap::new(),
-        }
-    }
 }
 
 impl Mem {
@@ -73,7 +66,7 @@ impl Source for Mem {
         .ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::NotFound,
-                format!("path: {}, dir: {:?}", path, dir),
+                format!("path: {:?}, dir: {:?}", path, dir),
             )
         })
     }

@@ -2,8 +2,10 @@ pub mod container;
 pub mod fs;
 pub mod mem;
 
-use std::io;
-use uni_path::{Path, PathBuf};
+use std::{
+    io,
+    path::{Path, PathBuf},
+};
 
 /// Something that may provide file content by its name.
 pub trait Source {

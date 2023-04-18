@@ -1,5 +1,9 @@
-use std::{cmp::Ordering, ops::Range, rc::Rc};
-use uni_path::{Path, PathBuf};
+use std::{
+    cmp::Ordering,
+    ops::Range,
+    path::{Path, PathBuf},
+    rc::Rc,
+};
 
 #[derive(Debug)]
 struct IndexEntry {
